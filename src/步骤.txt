@@ -1,0 +1,127 @@
+1 登录系统
+curl 'https://os.zhida-keji.com.cn/api/login' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh-CN,zh;q=0.9' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: https://os.zhida-keji.com.cn' \
+  -H 'Referer: https://os.zhida-keji.com.cn/login' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"username":"19513764334","password":"zdlb","remember":true,"phone":"","phoneCode":"","code":"","uuid":""}'
+
+
+  {"msg":"操作成功","code":200,"data":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk"}
+
+
+  2 添加用户
+  curl 'https://os.zhida-keji.com.cn/api/simple/user' \
+    -H 'Accept: application/json, text/plain, */*' \
+    -H 'Accept-Language: zh-CN,zh;q=0.9' \
+    -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk' \
+    -H 'Connection: keep-alive' \
+    -H 'Content-Type: application/json' \
+    -H 'Origin: https://os.zhida-keji.com.cn' \
+    -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+    -H 'Sec-Fetch-Dest: empty' \
+    -H 'Sec-Fetch-Mode: cors' \
+    -H 'Sec-Fetch-Site: same-origin' \
+    -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+    -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+    -H 'sec-ch-ua-mobile: ?0' \
+    -H 'sec-ch-ua-platform: "macOS"' \
+    --data-raw '{"accountPriceType":0,"accountPrice":1,"nickName":"张三dd","phone":"19513764334","password":"123456","accountType":"[\"1\"]","provinceList":["新疆省","乌鲁木齐站"],"level":"中级监控","duration":31,"trial":0,"useContent":0,"monthPrice":0,"province":"新疆省","station":"乌鲁木齐站"}'
+
+    {"msg":"操作成功","code":200,"data":true}
+
+
+    3 按照用户名搜索用户
+    curl 'https://os.zhida-keji.com.cn/api/simple/user/page' \
+      -H 'Accept: application/json, text/plain, */*' \
+      -H 'Accept-Language: zh-CN,zh;q=0.9' \
+      -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk' \
+      -H 'Connection: keep-alive' \
+      -H 'Content-Type: application/json' \
+      -H 'Origin: https://os.zhida-keji.com.cn' \
+      -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+      -H 'Sec-Fetch-Dest: empty' \
+      -H 'Sec-Fetch-Mode: cors' \
+      -H 'Sec-Fetch-Site: same-origin' \
+      -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+      -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+      -H 'sec-ch-ua-mobile: ?0' \
+      -H 'sec-ch-ua-platform: "macOS"' \
+      --data-raw '{"deptId":"","pageSize":15,"pageNum":1,"search":"张三测试","intoTypeValue":"0","intoTypes":[0,1]}'
+
+
+      {"msg":"操作成功","code":200,"data":{"records":[{"remarks":null,"userId":143732,"password":"zdlb","train":0,"trainType":0,"avatar":null,"phone":"19513764334","nickName":"张三测试","isAffairsStatus":0,"accountManager":null,"sex":2,"region":"乌鲁木齐站","region2":null,"detailAddr":null,"idCard":null,"intoType":0,"deleteFlag":"0","status":"0","firstLogin":1,"createBy":"19513764334","createTime":"2026-04-11 19:23:17","updateBy":"19513764334","updateTime":"2026-04-11 19:23:17","deptId":289,"lsToken":null,"loginLimitation":true,"openId":null,"recruitUserId":null,"education":null,"company":null,"level":"中级监控","remark":null,"lastLoginTime":null,"online":false,"flowBy":null,"reSignStatus":false,"isReplace":false,"className":null,"customerId":null,"companyConcat":null,"signRegion":null,"dataSource":null,"promotion":null,"simulationType":"未知","examiner":false,"noTrainReason":null,"refreshToken":null,"signCheck":null,"isTeacher":null,"count":null,"firstInClassTime":null,"serviceExpirationTime":null,"productId":null,"replaceUserId":null,"isPrompt":0,"replaceUserName":null,"predictionId":null,"deptName":"中德利邦职业技能培训中心","classNames":null,"classList":null,"teacherNames":null,"recruitName":null,"recruitDeptName":null,"resourceList":null,"doneAudit":null,"rejectAdvice":null,"sendStatus":null,"sendDate":null,"sendUseStatus":null,"sendStation":null,"sendAddress":null,"sendCheck":null,"sendPhone":null,"sendRecipient":null,"sendNo":null,"sendRemark":null,"materialStatus":null,"materialDate":null,"materialRemark":null,"certNo":null,"certStatus":null,"serialNo":null,"signDate":null,"account":null,"prePassword":null,"flowInfo":null,"information":null,"informationStatus":null,"informationRemark":null,"informationAudit":null,"prePayment":null,"suspended":null,"preTestBatch":null,"testDate":null,"testBatch":null,"theoryScore":null,"simulationScore":null,"teacherName1":null,"classId":null,"simClassName":null,"pass":null,"simulationInitial":null,"simulationRecurrent":null,"simulationRemark":null,"makeTestProcess":null,"makeTestPayment":null,"makeTestDate":null,"makeTestScore":null,"retestDate":null,"retestBatch":null,"retestTheoryScore":null,"retestSimulationScore":null,"retestPass":null,"teacherName2":null,"retestClassId":null,"simRetestClassName":null,"remakeTestProcess":null,"remakeTestPayment":null,"remakeTestDate":null,"remakeTestScore":null,"remakeTestPass":null,"teacherName3":null,"remakeTestClassId":null,"simRemakeClassName":null,"makeTestPass":null,"teacherName4":null,"makeTestClassId":null,"simMakeTestClassName":null,"remakeTestBatch":null,"makeTestBatch":null,"strengthenRemark":null,"simulationRegion":null,"intoClassAudit":null,"amount":null,"amountSelf":null,"payment":null,"paymentDate":null,"paymentMethod":null,"paymentNo":null,"paymentRemark":null,"refundDate":null,"refundAmount":null,"refundType":null,"collectionInfo":null,"appraisalAmount":null,"appraisalRefundRemark":null,"appraisalRefundAmount":null,"appraisalRefundDate":null,"commissionDate":null,"commissionAmount":null,"commissionTo":null,"commissionRemark":null,"foodTransportDate":null,"foodTransportAmount":null,"foodTransportTo":null,"foodTransportRemark":null,"hotelExpenseDate":null,"hotelExpenseAmount":null,"hotelExpenseTo":null,"hotelExpenseRemark":null,"transportDate":null,"transportAmount":null,"transportTo":null,"transportRemark":null,"otherDate":null,"otherAmount":null,"otherTo":null,"otherRemark":null,"baseCategory":null,"invoice":null,"invoiceNo":null,"invoiceDate":null,"invoiceMain":null,"invoiceUnit":null,"taxpayerNo":null,"invoiceAddr":null,"invoiceEmail":null,"bankNo":null,"invoiceAmount":null,"invoiceId":null,"invoiceType":null,"invoiceRemark":null,"warnDate":null,"collectionDate1":null,"collectionDate2":null,"collectionDate3":null,"collectionDate4":null,"collectionDate5":null,"collectionState1":null,"collectionState2":null,"collectionState3":null,"collectionState4":null,"collectionState5":null,"resourceIds":[],"resources":[],"hasResource":null,"sprint":null,"accountType":"[\"1\"]","useTime":"2027-04-11 19:23:17","province":"新疆省","station":"乌鲁木齐站","provinceList":null,"accountStatus":"0","useContent":null,"trial":0,"accountPrice":3,"accountType2":0,"scoreDate":null,"score1":null,"score2":null,"scorePass":null,"scoreType":null,"certDirection":null,"certStartTime":null,"certEndTime":null,"certGraduationTime":null,"otherPayment":null,"contractSign":null,"contractSubject":null,"contractCode":null,"loadSerialNo":null,"loadErrorInfo":null,"loadPaymentStr":null,"loadPaymentStr2":null,"loadEndDate":null,"loadTestTime":null,"loadRejectReason":null,"loadSelected":null,"index":null,"isAccountType":1,"accountMonth":12,"applyRemark":null,"examList":null,"sprintList":null,"latestTitle":null,"latestScore":null,"latestCreateTime":null,"latestUseSecond":null,"maxScoreTitle":null,"maxScore":null,"maxScoreCreateTime":null,"maxScoreUseSecond":null,"examCount":0,"examUseCount":0,"examCorrectCount":0,"videoScheduleTime":0,"videoAllScheduleTime":0,"videoCount":0,"simulationLastScore":"0","simulationLastTotalScore":"0","simulationLastType":null,"simulationLastBusiness":null,"simulationLastDevice":null,"simulationLastCritial":null,"simulationMaxScore":"0","simulationMaxTotalScore":"0","simulationMaxType":null,"simulationMaxBusiness":null,"simulationMaxDevice":null,"simulationMaxCritial":null,"simulationQuestionSize":0,"simulationQuestionCorrectSize":0,"unitPrice":null,"commissionAmountReceive":null,"foodAmountReceive":null,"transportAmountReceive":null,"hotelExpenseAmountReceive":null,"otherAmountReceive":null,"paymentCollectionDate":null,"gtype":null,"gpass":null}],"total":1,"size":15,"current":1,"orders":[],"optimizeCountSql":true,"hitCount":false,"countId":null,"maxLimit":null,"searchCount":true,"pages":1}}
+
+
+    4 按照用户id删除用户
+    curl 'https://os.zhida-keji.com.cn/api/simple/user' \
+      -X 'DELETE' \
+      -H 'Accept: application/json, text/plain, */*' \
+      -H 'Accept-Language: zh-CN,zh;q=0.9' \
+      -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk' \
+      -H 'Connection: keep-alive' \
+      -H 'Content-Type: application/json' \
+      -H 'Origin: https://os.zhida-keji.com.cn' \
+      -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+      -H 'Sec-Fetch-Dest: empty' \
+      -H 'Sec-Fetch-Mode: cors' \
+      -H 'Sec-Fetch-Site: same-origin' \
+      -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+      -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+      -H 'sec-ch-ua-mobile: ?0' \
+      -H 'sec-ch-ua-platform: "macOS"' \
+      --data-raw '[143732]'
+
+      {"msg":"操作成功","code":200,"data":"操作成功"}
+
+
+      5 导出考试记录 
+      curl 'https://os.zhida-keji.com.cn/api/test/record/export?nickName=&phone=&pageSize=20&pageNum=1&beginStart=2026-04-04+00:00:00&beginEnd=2026-04-11+23:59:59' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh-CN,zh;q=0.9' \
+  -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: https://os.zhida-keji.com.cn' \
+  -H 'Referer: https://os.zhida-keji.com.cn/exam/test_record' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{}'
+
+  返回的是一个 excel 文件流 。在浏览器上可直接下载 。 
+
+
+
+6 学员列表
+curl 'https://os.zhida-keji.com.cn/api/simple/user/page' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh-CN,zh;q=0.9' \
+  -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiJhZTM4Y2EwOGNkODM0MTJlYTRlNTU3MjUxMzRjOTg2OCJ9.cVwx8l0N9Cwd0BVdvCXMtwsBoxt8g_fzDOVxfzcq2Lk' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: https://os.zhida-keji.com.cn' \
+  -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"deptId":"","pageSize":15,"pageNum":1,"search":"","intoTypeValue":0,"intoTypes":[0,1]}'
+
+  {"msg":"操作成功","code":200,"data":{"records":[{"remarks":null,"userId":143732,"password":"zdlb","train":0,"trainType":0,"avatar":null,"phone":"19513764334","nickName":"张三测试","isAffairsStatus":0,"accountManager":null,"sex":2,"region":"乌鲁木齐站","region2":null,"detailAddr":null,"idCard":null,"intoType":0,"deleteFlag":"0","status":"0","firstLogin":1,"createBy":"19513764334","createTime":"2026-04-11 19:23:17","updateBy":"19513764334","updateTime":"2026-04-11 19:23:17","deptId":289,"lsToken":null,"loginLimitation":true,"openId":null,"recruitUserId":null,"education":null,"company":null,"level":"中级监控","remark":null,"lastLoginTime":null,"online":false,"flowBy":null,"reSignStatus":false,"isReplace":false,"className":null,"customerId":null,"companyConcat":null,"signRegion":null,"dataSource":null,"promotion":null,"simulationType":"未知","examiner":false,"noTrainReason":null,"refreshToken":null,"signCheck":null,"isTeacher":null,"count":null,"firstInClassTime":null,"serviceExpirationTime":null,"productId":null,"replaceUserId":null,"isPrompt":0,"replaceUserName":null,"predictionId":null,"deptName":"中德利邦职业技能培训中心","classNames":null,"classList":null,"teacherNames":null,"recruitName":null,"recruitDeptName":null,"resourceList":null,"doneAudit":null,"rejectAdvice":null,"sendStatus":null,"sendDate":null,"sendUseStatus":null,"sendStation":null,"sendAddress":null,"sendCheck":null,"sendPhone":null,"sendRecipient":null,"sendNo":null,"sendRemark":null,"materialStatus":null,"materialDate":null,"materialRemark":null,"certNo":null,"certStatus":null,"serialNo":null,"signDate":null,"account":null,"prePassword":null,"flowInfo":null,"information":null,"informationStatus":null,"informationRemark":null,"informationAudit":null,"prePayment":null,"suspended":null,"preTestBatch":null,"testDate":null,"testBatch":null,"theoryScore":null,"simulationScore":null,"teacherName1":null,"classId":null,"simClassName":null,"pass":null,"simulationInitial":null,"simulationRecurrent":null,"simulationRemark":null,"makeTestProcess":null,"makeTestPayment":null,"makeTestDate":null,"makeTestScore":null,"retestDate":null,"retestBatch":null,"retestTheoryScore":null,"retestSimulationScore":null,"retestPass":null,"teacherName2":null,"retestClassId":null,"simRetestClassName":null,"remakeTestProcess":null,"remakeTestPayment":null,"remakeTestDate":null,"remakeTestScore":null,"remakeTestPass":null,"teacherName3":null,"remakeTestClassId":null,"simRemakeClassName":null,"makeTestPass":null,"teacherName4":null,"makeTestClassId":null,"simMakeTestClassName":null,"remakeTestBatch":null,"makeTestBatch":null,"strengthenRemark":null,"simulationRegion":null,"intoClassAudit":null,"amount":null,"amountSelf":null,"payment":null,"paymentDate":null,"paymentMethod":null,"paymentNo":null,"paymentRemark":null,"refundDate":null,"refundAmount":null,"refundType":null,"collectionInfo":null,"appraisalAmount":null,"appraisalRefundRemark":null,"appraisalRefundAmount":null,"appraisalRefundDate":null,"commissionDate":null,"commissionAmount":null,"commissionTo":null,"commissionRemark":null,"foodTransportDate":null,"foodTransportAmount":null,"foodTransportTo":null,"foodTransportRemark":null,"hotelExpenseDate":null,"hotelExpenseAmount":null,"hotelExpenseTo":null,"hotelExpenseRemark":null,"transportDate":null,"transportAmount":null,"transportTo":null,"transportRemark":null,"otherDate":null,"otherAmount":null,"otherTo":null,"otherRemark":null,"baseCategory":null,"invoice":null,"invoiceNo":null,"invoiceDate":null,"invoiceMain":null,"invoiceUnit":null,"taxpayerNo":null,"invoiceAddr":null,"invoiceEmail":null,"bankNo":null,"invoiceAmount":null,"invoiceId":null,"invoiceType":null,"invoiceRemark":null,"warnDate":null,"collectionDate1":null,"collectionDate2":null,"collectionDate3":null,"collectionDate4":null,"collectionDate5":null,"collectionState1":null,"collectionState2":null,"collectionState3":null,"collectionState4":null,"collectionState5":null,"resourceIds":[],"resources":[],"hasResource":null,"sprint":null,"accountType":"[\"1\"]","useTime":"2027-04-11 19:23:17","province":"新疆省","station":"乌鲁木齐站","provinceList":null,"accountStatus":"0","useContent":null,"trial":0,"accountPrice":3,"accountType2":0,"scoreDate":null,"score1":null,"score2":null,"scorePass":null,"scoreType":null,"certDirection":null,"certStartTime":null,"certEndTime":null,"certGraduationTime":null,"otherPayment":null,"contractSign":null,"contractSubject":null,"contractCode":null,"loadSerialNo":null,"loadErrorInfo":null,"loadPaymentStr":null,"loadPaymentStr2":null,"loadEndDate":null,"loadTestTime":null,"loadRejectReason":null,"loadSelected":null,"index":null,"isAccountType":1,"accountMonth":12,"applyRemark":null,"examList":null,"sprintList":null,"latestTitle":null,"latestScore":null,"latestCreateTime":null,"latestUseSecond":null,"maxScoreTitle":null,"maxScore":null,"maxScoreCreateTime":null,"maxScoreUseSecond":null,"examCount":0,"examUseCount":0,"examCorrectCount":0,"videoScheduleTime":0,"videoAllScheduleTime":0,"videoCount":0,"simulationLastScore":"0","simulationLastTotalScore":"0","simulationLastType":null,"simulationLastBusiness":null,"simulationLastDevice":null,"simulationLastCritial":null,"simulationMaxScore":"0","simulationMaxTotalScore":"0","simulationMaxType":null,"simulationMaxBusiness":null,"simulationMaxDevice":null,"simulationMaxCritial":null,"simulationQuestionSize":0,"simulationQuestionCorrectSize":0,"unitPrice":null,"commissionAmountReceive":null,"foodAmountReceive":null,"transportAmountReceive":null,"hotelExpenseAmountReceive":null,"otherAmountReceive":null,"paymentCollectionDate":null,"gtype":null,"gpass":null}],"total":1,"size":15,"current":1,"orders":[],"optimizeCountSql":true,"hitCount":false,"countId":null,"maxLimit":null,"searchCount":true,"pages":1}}
