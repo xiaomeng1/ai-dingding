@@ -29,3 +29,46 @@ Initialization Sequence datacenterId:30 workerId:30
 2026-04-12T10:09:15.434+08:00  INFO 3642 --- [vaccine-system] [           main] c.ai.dingding.VaccineSystemApplication   : Started VaccineSystemApplication in 2.334 seconds (process running for 2.806)
 2026-04-12T10:10:49.949+08:00  INFO 3642 --- [vaccine-system] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
 2026-04-12T10:10:49.958+08:00  INFO 3642 --- [vaccine-system] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.13)
+
+2026-04-12T11:23:32.149+08:00  INFO 5867 --- [vaccine-system] [           main] c.ai.dingding.VaccineSystemApplication   : Starting VaccineSystemApplication v0.0.1-SNAPSHOT using Java 17.0.11 with PID 5867 (/Users/xiaomeng/workspace/java/ai-dingding/ai-dingding-0.0.1-SNAPSHOT.jar started by xiaomeng in /Users/xiaomeng/workspace/java/ai-dingding)
+2026-04-12T11:23:32.151+08:00  INFO 5867 --- [vaccine-system] [           main] c.ai.dingding.VaccineSystemApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-04-12T11:23:32.999+08:00  WARN 5867 --- [vaccine-system] [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.ai.dingding]' package. Please check your configuration.
+2026-04-12T11:23:33.336+08:00  INFO 5867 --- [vaccine-system] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-04-12T11:23:33.352+08:00  INFO 5867 --- [vaccine-system] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-12T11:23:33.352+08:00  INFO 5867 --- [vaccine-system] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.53]
+2026-04-12T11:23:33.382+08:00  INFO 5867 --- [vaccine-system] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-04-12T11:23:33.383+08:00  INFO 5867 --- [vaccine-system] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1185 ms
+2026-04-12T11:23:33.703+08:00  WARN 5867 --- [vaccine-system] [           main] ion$DefaultTemplateResolverConfiguration : Cannot find template location: classpath:/templates/ (please add some templates, check your Thymeleaf configuration, or set spring.thymeleaf.check-template-location=false)
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Get /192.168.1.12 network interface 
+Get network interface info: name:en0 (en0)
+Initialization Sequence datacenterId:30 workerId:1
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+2026-04-12T11:23:34.065+08:00  INFO 5867 --- [vaccine-system] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-04-12T11:23:34.076+08:00  INFO 5867 --- [vaccine-system] [           main] c.ai.dingding.VaccineSystemApplication   : Started VaccineSystemApplication in 2.388 seconds (process running for 2.891)
+2026-04-12T11:24:27.824+08:00  INFO 5867 --- [vaccine-system] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-04-12T11:24:27.832+08:00  INFO 5867 --- [vaccine-system] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+11:27:31.863 [connection-pool-2-1] INFO com.dingtalk.open.app.stream.network.ws.WebsocketTransportConnector -- [DingTalk] start websocket connection, uri=wss://wss-open-connection-union.dingtalk.com:443/connect
+11:27:32.365 [connection-pool-2-1] INFO com.dingtalk.open.app.stream.network.core.DefaultSessionPool -- [DingTalk] connection is established, connectionId=8a5de54c-361f-11f1-a5dc-6eb625d4e7f6
+11:29:46.448 [connection-pool-2-1] INFO com.dingtalk.open.app.stream.network.ws.WebsocketTransportConnector -- [DingTalk] start websocket connection, uri=wss://wss-open-connection-union.dingtalk.com:443/connect
+11:29:46.984 [connection-pool-2-1] INFO com.dingtalk.open.app.stream.network.core.DefaultSessionPool -- [DingTalk] connection is established, connectionId=da8c0916-361f-11f1-8a2d-26300f98b769
+11:43:03.767 [DingTalk-Consumer-1-1] INFO  com.ai.dingding.DingDingMain -- receive robotMessage: {senderPlatform=Android, conversationId=cidFryLQN9M4gGgI3j2AhP/0UVHy1mYTWx+IHH7SiQ6qWA=, chatbotCorpId=ding245f15d61062bf51f5bf40eda33b7ba0, chatbotUserId=$:LWCP_v1:$abs/G4Ky52VizygL2SehqGR+q+rGXGBs, openThreadId=cidFryLQN9M4gGgI3j2AhP/0UVHy1mYTWx+IHH7SiQ6qWA=, msgId=msgdrKyQX8db+DK1/o0GK2XuA==, senderNick=152******59, isAdmin=true, senderStaffId=036057604318186550002, sessionWebhookExpiredTime=1775970782284, createAt=1775965381951, senderCorpId=ding245f15d61062bf51f5bf40eda33b7ba0, conversationType=1, senderId=$:LWCP_v1:$6/9kFYP8wOQlXKMDEH4xKtFXd3TbOyyp, sessionWebhook=https://oapi.dingtalk.com/robot/sendBySession?session=08e517634411018aacda0351ccfab1a6, text={content=统计新增学员 2026-04-01 2026-04-15}, robotCode=ding3wlhmzygb3m67t3i, msgtype=text}
+11:43:04.278 [DingTalk-Consumer-1-1] INFO  com.ai.dingding.license.LicenseChecker -- 授权状态已刷新：active=true，message=授权到期不可用
+11:43:04.278 [DingTalk-Consumer-1-1] INFO  com.ai.dingding.handler.UserCommandHandler -- 收到指令：[统计新增学员 2026-04-01 2026-04-15]，conversationId：cidFryLQN9M4gGgI3j2AhP/0UVHy1mYTWx+IHH7SiQ6qWA=，conversationType：1
+11:43:04.546 [DingTalk-Consumer-1-1] INFO  com.ai.dingding.service.DingTalkMessageService -- 钉钉 accessToken 已刷新，有效期 7200s
+11:43:04.633 [DingTalk-Consumer-1-1] INFO  com.ai.dingding.service.DingTalkMessageService -- 发送钉钉私聊文本消息 -> status=200, body={"flowControlledStaffIdList":[],"invalidStaffIdList":[],"processQueryKey":"yqOegOjhErmbp7sVUt5zXoRqMwGdVDSpto+1SLSpZ/0="}
+11:43:05.051 [pool-2-thread-1] INFO  com.ai.dingding.service.SystemApiService -- 系统登录成功，token 已更新
+11:43:06.774 [pool-2-thread-1] INFO  com.ai.dingding.service.SystemApiService -- 学员总页数：1，共 197 条
+11:43:06.893 [pool-2-thread-1] INFO  com.ai.dingding.service.DingTalkMessageService -- 发送钉钉私聊文本消息 -> status=200, body={"flowControlledStaffIdList":[],"invalidStaffIdList":[],"processQueryKey":"WaYHXQhT5M1Nue7F4maDMagCU4KhIYBVzcAkEs/FytU="}
