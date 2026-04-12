@@ -260,10 +260,10 @@ public class UserCommandHandler {
                         .filter(u -> isInRange(u.getString("createTime"), begin, end))
                         .collect(Collectors.toList());
 
-                // 按 region 分组统计，按数量降序排列
+                // 从 nickName 末尾括号中提取区域，兼容中英文括号，无法提取时归入"未知区域"
                 Map<String, Long> regionCount = filtered.stream()
                         .collect(Collectors.groupingBy(
-                                u -> nullToEmpty(u.getString("region")),
+                                u -> extractRegionFromNickName(u.getString("nickName")),
                                 Collectors.counting()
                         ));
 
@@ -527,6 +527,35 @@ public class UserCommandHandler {
         } catch (DateTimeParseException e) {
             return false;
         }
+    }
+
+    /**
+     * 从 nickName 末尾的括号中提取区域信息。
+     * 支持中文括号（）和英文括号()，优先匹配最后一对括号。
+     * 示例："赵寅康（五家渠）" → "五家渠"，"张三(Urumqi)" → "Urumqi"
+     * 无括号或括号内容为空时返回"未知区域"。
+     */
+    private String extractRegionFromNickName(String nickName) {
+        if (nickName == null || nickName.isBlank()) {
+            return "未知区域";
+        }
+        // 同时匹配中文括号（）和英文括号()，取最后一对括号内的内容
+        int lastOpen = -1;
+        int lastClose = -1;
+        for (int i = nickName.length() - 1; i >= 0; i--) {
+            char c = nickName.charAt(i);
+            if ((c == '）' || c == ')') && lastClose == -1) {
+                lastClose = i;
+            } else if ((c == '（' || c == '(') && lastClose != -1) {
+                lastOpen = i;
+                break;
+            }
+        }
+        if (lastOpen >= 0 && lastClose > lastOpen) {
+            String region = nickName.substring(lastOpen + 1, lastClose).trim();
+            return region.isBlank() ? "未知区域" : region;
+        }
+        return "未知区域";
     }
 
     private String nullToEmpty(String val) {

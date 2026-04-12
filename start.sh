@@ -5,8 +5,8 @@
 # ============================================================
 
 # 钉钉应用凭证（在钉钉开放平台获取）
-DING_APP_KEY="ding3wlhmzygb3m67t3i"
-DING_APP_SECRET="cL-ivK-CwQJKsz7VZI2R7EEsk2pDwm0cnlSD4av_wbZbpdw1I4yh6aF1DSKtklFx"
+DING_APP_KEY="dingdjinfi94nshyrw2i"
+DING_APP_SECRET="TvPjo5pkxXU3tzlD1TmXiV2gNX4lzgMip5LzysOFn-x86Z2luSQKHjhhT-0Rzkkv"
 
 # 系统登录凭证（os.zhida-keji.com.cn 账号）
 SYS_USERNAME="19513764334"
