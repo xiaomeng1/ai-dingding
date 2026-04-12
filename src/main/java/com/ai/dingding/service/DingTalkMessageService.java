@@ -26,14 +26,18 @@ import java.util.UUID;
 @Log4j2
 public class DingTalkMessageService {
 
-    private static final String APP_KEY = "ding3wlhmzygb3m67t3i";
-    private static final String APP_SECRET =
-            "cL-ivK-CwQJKsz7VZI2R7EEsk2pDwm0cnlSD4av_wbZbpdw1I4yh6aF1DSKtklFx";
+    /** 从 JVM 启动参数读取：-Dding.appKey=xxx */
+    private static final String APP_KEY = System.getProperty("ding.appKey");
+    /** 从 JVM 启动参数读取：-Dding.appSecret=xxx */
+    private static final String APP_SECRET = System.getProperty("ding.appSecret");
 
     private static final String TOKEN_URL =
             "https://api.dingtalk.com/v1.0/oauth2/accessToken";
     private static final String SEND_URL =
             "https://api.dingtalk.com/v1.0/robot/groupMessages/send";
+    /** 单聊（私聊）发送接口，对应钉钉文档：POST /v1.0/robot/oToMessages/batchSend */
+    private static final String PRIVATE_SEND_URL =
+            "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend";
     /** 旧版媒体上传接口，新版 v1.0 /robot/messageFiles/upload 返回 404 */
     private static final String OLD_TOKEN_URL =
             "https://oapi.dingtalk.com/gettoken";
@@ -96,6 +100,102 @@ public class DingTalkMessageService {
         }
     }
 
+    // -------- 私聊消息 --------
+
+    /**
+     * 向指定用户发送私聊文本消息（单聊场景）。
+     *
+     * @param userId  发送目标的 staffId（来自机器人回调 senderStaffId）
+     * @param content 消息内容
+     */
+    public void sendPrivateTextMessage(String userId, String content) {
+        try {
+            String accessToken = getAccessToken();
+            if (accessToken == null) {
+                log.error("无法获取钉钉 accessToken，私聊消息发送失败");
+                return;
+            }
+
+            JSONObject msgParam = new JSONObject();
+            msgParam.put("content", content);
+
+            JSONObject body = new JSONObject();
+            body.put("robotCode", robotCode);
+            body.put("userIds", java.util.List.of(userId));
+            body.put("msgKey", "sampleText");
+            body.put("msgParam", msgParam.toJSONString());
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(PRIVATE_SEND_URL))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Content-Type", "application/json")
+                    .header("x-acs-dingtalk-access-token", accessToken)
+                    .POST(HttpRequest.BodyPublishers.ofString(body.toJSONString()))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(
+                    request, HttpResponse.BodyHandlers.ofString()
+            );
+            log.info("发送钉钉私聊文本消息 -> status={}, body={}", response.statusCode(), response.body());
+        } catch (Exception e) {
+            log.error("发送钉钉私聊消息异常", e);
+        }
+    }
+
+    /**
+     * 向指定用户私聊发送 Excel 文件（上传后转发）。
+     *
+     * @param userId   发送目标的 staffId
+     * @param fileName 文件名（含扩展名）
+     * @param fileData 文件字节数组
+     */
+    public void sendPrivateExamFile(String userId, String fileName, byte[] fileData) {
+        String mediaId = uploadFileViaOldApi(fileName, fileData);
+        if (mediaId == null) {
+            sendPrivateTextMessage(userId, "钉钉文件上传失败，请联系管理人员！");
+            return;
+        }
+        sendPrivateFileMessage(userId, fileName, mediaId);
+    }
+
+    /**
+     * 向指定用户私聊发送文件消息。
+     */
+    private void sendPrivateFileMessage(String userId, String fileName, String mediaId) {
+        try {
+            String accessToken = getAccessToken();
+            if (accessToken == null) {
+                log.error("无法获取钉钉 accessToken，私聊文件消息发送失败");
+                return;
+            }
+
+            JSONObject msgParam = new JSONObject();
+            msgParam.put("fileName", fileName);
+            msgParam.put("mediaId", mediaId);
+
+            JSONObject body = new JSONObject();
+            body.put("robotCode", robotCode);
+            body.put("userIds", java.util.List.of(userId));
+            body.put("msgKey", "sampleFile");
+            body.put("msgParam", msgParam.toJSONString());
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(PRIVATE_SEND_URL))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Content-Type", "application/json")
+                    .header("x-acs-dingtalk-access-token", accessToken)
+                    .POST(HttpRequest.BodyPublishers.ofString(body.toJSONString()))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(
+                    request, HttpResponse.BodyHandlers.ofString()
+            );
+            log.info("发送钉钉私聊文件消息 -> status={}, body={}", response.statusCode(), response.body());
+        } catch (Exception e) {
+            log.error("发送钉钉私聊文件消息异常", e);
+        }
+    }
+
     // -------- 文件消息 --------
 
     /**
@@ -108,17 +208,17 @@ public class DingTalkMessageService {
      */
     public void sendExamFile(String openConversationId, String fileName, byte[] fileData) {
         // 先落盘本地，方便验证文件内容
-        String localPath = saveLocalFile(fileName, fileData);
-        if (localPath != null) {
-            log.info("导出文件已保存到本地：{}", localPath);
-            sendTextMessage(openConversationId,
-                    "文件已生成（" + (fileData.length / 1024) + " KB），正在上传到群...\n本地路径：" + localPath);
-        }
+//        String localPath = saveLocalFile(fileName, fileData);
+//        if (localPath != null) {
+//            log.info("导出文件已保存到本地：{}", localPath);
+//            sendTextMessage(openConversationId,
+//                    "文件已生成（" + (fileData.length / 1024) + " KB），正在上传到群...\n本地路径：" + localPath);
+//        }
 
         String mediaId = uploadFileViaOldApi(fileName, fileData);
         if (mediaId == null) {
             sendTextMessage(openConversationId,
-                    "钉钉文件上传失败，请到服务器本地查看文件：" + localPath);
+                    "钉钉文件上传失败，请联系管理人员！");
             return;
         }
         sendFileMessage(openConversationId, fileName, mediaId);

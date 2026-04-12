@@ -12,12 +12,23 @@ import shade.com.alibaba.fastjson2.JSONObject;
 @Log4j2
 public class DingDingMain {
 
-    private static final String APP_KEY =
-            "ding3wlhmzygb3m67t3i";
-    private static final String APP_SECRET =
-            "cL-ivK-CwQJKsz7VZI2R7EEsk2pDwm0cnlSD4av_wbZbpdw1I4yh6aF1DSKtklFx";
+    /** 从 JVM 启动参数读取：-Dding.appKey=xxx */
+    private static final String APP_KEY = System.getProperty("ding.appKey");
+    /** 从 JVM 启动参数读取：-Dding.appSecret=xxx */
+    private static final String APP_SECRET = System.getProperty("ding.appSecret");
+
+    private static final String STARTUP_HELP =
+            "启动命令示例：\n"
+            + "java -Dding.appKey=xxx \\\n"
+            + "     -Dding.appSecret=xxx \\\n"
+            + "     -Dsys.username=xxx \\\n"
+            + "     -Dsys.password=xxx \\\n"
+            + "     -jar ai-dingding-0.0.1-SNAPSHOT.jar";
 
     public static void main(String[] args) throws Exception {
+        // 启动前校验必要参数，缺少时打印清晰错误并退出
+        validateRequiredProperties();
+
         SystemApiService systemApiService = new SystemApiService();
         DingTalkMessageService dingTalkMessageService =
                 new DingTalkMessageService(APP_KEY);
@@ -56,9 +67,16 @@ public class DingDingMain {
                             return new JSONObject();
                         }
 
+                        // conversationType: "1"=私聊，"2"=群聊
+                        String conversationType = msg.getString("conversationType");
+                        // 私聊回复需要发送人 staffId，群聊用 openConversationId
+                        String senderStaffId = msg.getString("senderStaffId");
+
                         // 重新组装一个干净的消息对象传给 handler
                         JSONObject normalizedMsg = new JSONObject();
                         normalizedMsg.put("conversationId", conversationId);
+                        normalizedMsg.put("conversationType", conversationType);
+                        normalizedMsg.put("senderId", senderStaffId);
                         JSONObject textObj = new JSONObject();
                         textObj.put("content", content.trim());
                         normalizedMsg.put("text", textObj);
@@ -70,6 +88,24 @@ public class DingDingMain {
                     return new JSONObject();
                 })
                 .build().start();
+    }
+
+    /**
+     * 校验必要的 JVM 启动参数，任意一个缺失则打印提示并退出。
+     */
+    private static void validateRequiredProperties() {
+        String[] required = {"ding.appKey", "ding.appSecret", "sys.username", "sys.password"};
+        boolean hasError = false;
+        for (String key : required) {
+            if (System.getProperty(key) == null || System.getProperty(key).isBlank()) {
+                log.error("缺少必要启动参数：-D{}=xxx", key);
+                hasError = true;
+            }
+        }
+        if (hasError) {
+            log.error("启动失败，请按以下格式启动：\n{}", STARTUP_HELP);
+            System.exit(1);
+        }
     }
 
     /**

@@ -17,3 +17,5 @@
 ## Lessons（教训）
 
 - [2026-04-11] 钉钉机器人群消息需用 `openConversationId`（非 `conversationId`）调 `/v1.0/robot/groupMessages/send`，发消息 Header 用 `x-acs-dingtalk-access-token` 而非 `Authorization` — 来源：对话回顾
+- [2026-04-12] 错误：私聊场景也调群消息接口 `/v1.0/robot/groupMessages/send` → 根因：未区分 conversationType → 正确做法：conversationType="1" 时调 `/v1.0/robot/oToMessages/batchSend` + userIds，"2" 时调群接口 + openConversationId → 防护：所有发消息调用必须通过 reply()/replyFile() 路由，禁止直接调 sendTextMessage
+- [2026-04-12] 钉钉机器人私聊接口是 `/v1.0/robot/oToMessages/batchSend`，不是 `privateMessages/send`（后者返回 404）— 来源：用户纠正+官方文档

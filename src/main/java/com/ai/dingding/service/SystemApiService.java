@@ -25,8 +25,10 @@ import java.util.List;
 public class SystemApiService {
 
     private static final String BASE_URL = "https://os.zhida-keji.com.cn/api";
-    private static final String LOGIN_USERNAME = "19513764334";
-    private static final String LOGIN_PASSWORD = "zdlb";
+    /** 从 JVM 启动参数读取：-Dsys.username=xxx */
+    private static final String LOGIN_USERNAME = System.getProperty("sys.username");
+    /** 从 JVM 启动参数读取：-Dsys.password=xxx */
+    private static final String LOGIN_PASSWORD = System.getProperty("sys.password");
 
     /** 创建用户时使用的固定默认参数 */
     private static final String ACCOUNT_TYPE = "[\"1\"]";

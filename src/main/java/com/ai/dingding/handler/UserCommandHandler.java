@@ -1,5 +1,6 @@
 package com.ai.dingding.handler;
 
+import com.ai.dingding.license.LicenseChecker;
 import com.ai.dingding.service.DingTalkMessageService;
 import com.ai.dingding.service.SystemApiService;
 import lombok.extern.log4j.Log4j2;
@@ -71,6 +72,9 @@ public class UserCommandHandler {
 
             String text = extractText(msg);
             String conversationId = msg.getString("conversationId");
+            // "1"=私聊，"2"=群聊；私聊时用 senderId 发私信，群聊时用 conversationId
+            String conversationType = msg.getString("conversationType");
+            String senderId = msg.getString("senderId");
 
             if (text == null || text.isBlank()) {
                 log.info("消息内容为空，忽略");
@@ -81,24 +85,34 @@ public class UserCommandHandler {
                 return;
             }
 
+            // 授权检查：每次指令请求时验证 Gitee 授权状态（30s 缓存）
+            if (!LicenseChecker.isActive()) {
+                String stopMsg = LicenseChecker.getMessage();
+                reply(conversationType, conversationId, senderId,
+                        stopMsg.isBlank() ? "系统维护中，暂停服务" : stopMsg);
+                log.warn("系统未授权，拒绝指令：{}", text);
+                return;
+            }
+
             text = text.trim();
-            log.info("收到指令：[{}]，conversationId：{}", text, conversationId);
+            log.info("收到指令：[{}]，conversationId：{}，conversationType：{}",
+                    text, conversationId, conversationType);
 
             if (text.startsWith(CMD_CREATE)) {
                 String[] parts = parseCreateArgs(text);
-                handleCreate(parts[0], parts[1], conversationId);
+                handleCreate(parts[0], parts[1], conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_SEARCH)) {
-                handleSearch(parseArg(text, CMD_SEARCH), conversationId);
+                handleSearch(parseArg(text, CMD_SEARCH), conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_DELETE)) {
-                handleDelete(parseArg(text, CMD_DELETE), conversationId);
+                handleDelete(parseArg(text, CMD_DELETE), conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_EXPORT_EXAM)) {
                 String arg = parseArg(text, CMD_EXPORT_EXAM);
-                handleExportExam(arg, conversationId);
+                handleExportExam(arg, conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_STUDENT_STATS)) {
                 String arg = parseArg(text, CMD_STUDENT_STATS);
-                handleStudentStats(arg, conversationId);
+                handleStudentStats(arg, conversationType, conversationId, senderId);
             } else {
-                dingTalkMessageService.sendTextMessage(conversationId, buildHelpText());
+                reply(conversationType, conversationId, senderId, buildHelpText());
             }
         } catch (Exception e) {
             log.error("处理机器人消息异常，消息：{}", robotMessage, e);
@@ -107,51 +121,54 @@ public class UserCommandHandler {
 
     // -------- 指令处理 --------
 
-    private void handleCreate(String nickName, String phone, String conversationId) {
+    private void handleCreate(String nickName, String phone,
+                              String conversationType, String conversationId, String senderId) {
         if (nickName == null || nickName.isBlank()) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "参数不完整，格式：创建用户 <用户名> <手机号>\n示例：创建用户 张三 13800138000");
             return;
         }
         if (phone == null || phone.isBlank()) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "手机号不能为空，格式：创建用户 <用户名> <手机号>\n示例：创建用户 张三 13800138000");
             return;
         }
 
         String result = systemApiService.createUser(nickName, phone);
-        dingTalkMessageService.sendTextMessage(conversationId,
+        reply(conversationType, conversationId, senderId,
                 buildCreateReply(nickName, phone, result));
     }
 
-    private void handleSearch(String nickName, String conversationId) {
+    private void handleSearch(String nickName,
+                              String conversationType, String conversationId, String senderId) {
         if (nickName == null || nickName.isBlank()) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "用户名不能为空，格式：搜索用户 <用户名>");
             return;
         }
 
         List<JSONObject> users = systemApiService.searchUser(nickName);
-        dingTalkMessageService.sendTextMessage(conversationId,
+        reply(conversationType, conversationId, senderId,
                 buildSearchReply(nickName, users));
     }
 
-    private void handleDelete(String nickName, String conversationId) {
+    private void handleDelete(String nickName,
+                              String conversationType, String conversationId, String senderId) {
         if (nickName == null || nickName.isBlank()) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "用户名不能为空，格式：删除用户 <用户名>");
             return;
         }
 
         List<JSONObject> users = systemApiService.searchUser(nickName);
         if (users.isEmpty()) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "未找到用户「" + nickName + "」，删除取消");
             return;
         }
 
         if (users.size() > 1) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "找到多个同名用户（" + users.size() + " 个），请提供更精确的用户名：\n"
                             + buildSearchReply(nickName, users));
             return;
@@ -162,13 +179,12 @@ public class UserCommandHandler {
         String actualName = user.getString("nickName");
 
         if (userId == null) {
-            dingTalkMessageService.sendTextMessage(conversationId,
-                    "获取用户 ID 失败，删除取消");
+            reply(conversationType, conversationId, senderId, "获取用户 ID 失败，删除取消");
             return;
         }
 
         String result = systemApiService.deleteUser(userId);
-        dingTalkMessageService.sendTextMessage(conversationId,
+        reply(conversationType, conversationId, senderId,
                 buildDeleteReply(actualName, userId, result));
     }
 
@@ -176,10 +192,11 @@ public class UserCommandHandler {
      * 导出考试记录，在后台线程执行（避免阻塞钉钉回调超时）。
      * 支持：近一周 / 近一个月 / yyyy-MM-dd yyyy-MM-dd
      */
-    private void handleExportExam(String arg, String conversationId) {
+    private void handleExportExam(String arg,
+                                   String conversationType, String conversationId, String senderId) {
         String[] range = parseTimeRange(arg);
         if (range == null) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "时间格式不正确，支持：\n"
                             + "  导出考试记录 近一周\n"
                             + "  导出考试记录 近一个月\n"
@@ -189,24 +206,24 @@ public class UserCommandHandler {
 
         String beginStart = range[0];
         String beginEnd = range[1];
-        dingTalkMessageService.sendTextMessage(conversationId,
+        reply(conversationType, conversationId, senderId,
                 "正在导出考试记录（" + formatRangeLabel(beginStart, beginEnd) + "），请稍候...");
 
         asyncExecutor.submit(() -> {
             try {
                 byte[] fileData = systemApiService.exportExamRecords(beginStart, beginEnd);
                 if (fileData == null || fileData.length == 0) {
-                    dingTalkMessageService.sendTextMessage(conversationId,
+                    reply(conversationType, conversationId, senderId,
                             "导出失败：服务端未返回文件数据，请检查时间范围后重试");
                     return;
                 }
 
                 log.info("收到导出文件，大小 {} 字节，准备上传钉钉", fileData.length);
                 String fileName = buildExportFileName(beginStart, beginEnd);
-                dingTalkMessageService.sendExamFile(conversationId, fileName, fileData);
+                replyFile(conversationType, conversationId, senderId, fileName, fileData);
             } catch (Exception e) {
                 log.error("导出考试记录异步任务异常", e);
-                dingTalkMessageService.sendTextMessage(conversationId, "导出考试记录时发生异常，请联系管理员");
+                reply(conversationType, conversationId, senderId, "导出考试记录时发生异常，请联系管理员");
             }
         });
     }
@@ -215,10 +232,11 @@ public class UserCommandHandler {
      * 统计各地区新增学员，在后台线程执行。
      * 支持：近一个月 / yyyy-MM-dd yyyy-MM-dd
      */
-    private void handleStudentStats(String arg, String conversationId) {
+    private void handleStudentStats(String arg,
+                                     String conversationType, String conversationId, String senderId) {
         String[] range = parseTimeRange(arg);
         if (range == null) {
-            dingTalkMessageService.sendTextMessage(conversationId,
+            reply(conversationType, conversationId, senderId,
                     "时间格式不正确，支持：\n"
                             + "  统计新增学员 近一个月\n"
                             + "  统计新增学员 2026-03-01 2026-04-11");
@@ -227,7 +245,7 @@ public class UserCommandHandler {
 
         String beginStart = range[0];
         String beginEnd = range[1];
-        dingTalkMessageService.sendTextMessage(conversationId,
+        reply(conversationType, conversationId, senderId,
                 "正在统计新增学员（" + formatRangeLabel(beginStart, beginEnd) + "），请稍候...");
 
         asyncExecutor.submit(() -> {
@@ -258,13 +276,12 @@ public class UserCommandHandler {
                                 LinkedHashMap::new
                         ));
 
-                String reply = buildStudentStatsReply(beginStart, beginEnd,
+                String statsMsg = buildStudentStatsReply(beginStart, beginEnd,
                         filtered.size(), sortedRegionCount);
-                dingTalkMessageService.sendTextMessage(conversationId, reply);
+                reply(conversationType, conversationId, senderId, statsMsg);
             } catch (Exception e) {
                 log.error("统计新增学员异步任务异常", e);
-                dingTalkMessageService.sendTextMessage(conversationId,
-                        "统计学员时发生异常，请联系管理员");
+                reply(conversationType, conversationId, senderId, "统计学员时发生异常，请联系管理员");
             }
         });
     }
@@ -381,6 +398,33 @@ public class UserCommandHandler {
                 + "  统计新增学员 2026-03-01 2026-04-11";
     }
 
+    // -------- 消息路由 --------
+
+    /**
+     * 统一回复入口：根据 conversationType 路由到群消息或私聊消息接口。
+     * "1" = 私聊，其余视为群聊。
+     */
+    private void reply(String conversationType, String conversationId,
+                       String senderId, String content) {
+        if ("1".equals(conversationType)) {
+            dingTalkMessageService.sendPrivateTextMessage(senderId, content);
+        } else {
+            dingTalkMessageService.sendTextMessage(conversationId, content);
+        }
+    }
+
+    /**
+     * 统一文件回复入口：根据 conversationType 路由到群文件或私聊文件接口。
+     */
+    private void replyFile(String conversationType, String conversationId,
+                           String senderId, String fileName, byte[] fileData) {
+        if ("1".equals(conversationType)) {
+            dingTalkMessageService.sendPrivateExamFile(senderId, fileName, fileData);
+        } else {
+            dingTalkMessageService.sendExamFile(conversationId, fileName, fileData);
+        }
+    }
+
     // -------- 工具方法 --------
 
     /** 从机器人消息中提取文本内容 */
@@ -443,7 +487,7 @@ public class UserCommandHandler {
             return buildRange(today.minusDays(7), today);
         }
         if (arg.contains("近一个月")) {
-            return buildRange(today.minusDays(30), today);
+            return buildRange(today.minusMonths(1), today);
         }
 
         // 尝试解析 "yyyy-MM-dd yyyy-MM-dd"
