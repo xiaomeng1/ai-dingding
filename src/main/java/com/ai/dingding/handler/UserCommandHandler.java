@@ -109,7 +109,7 @@ public class UserCommandHandler {
             } else if (text.startsWith(CMD_SEARCH)) {
                 handleSearch(parseArg(text, CMD_SEARCH), conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_DELETE)) {
-                handleDelete(parseArg(text, CMD_DELETE), conversationType, conversationId, senderId);
+                //handleDelete(parseArg(text, CMD_DELETE), conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_EXPORT_EXAM)) {
                 String arg = parseArg(text, CMD_EXPORT_EXAM);
                 handleExportExam(arg, conversationType, conversationId, senderId);
@@ -491,7 +491,7 @@ public class UserCommandHandler {
                 + "  创建用户 <用户名> <手机号>\n"
                 + "  创建用户 <用户名1> <手机号1>,<用户名2> <手机号2>\n"
                 + "  搜索用户 <用户名>\n"
-                + "  删除用户 <用户名>\n"
+//                + "  删除用户 <用户名>\n"
                 + "  导出考试记录 近一周\n"
                 + "  导出考试记录 近一个月\n"
                 + "  导出考试记录 2026-04-01 2026-04-11\n"
