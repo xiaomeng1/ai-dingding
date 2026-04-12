@@ -84,6 +84,11 @@ public class UserCommandHandler {
                 log.warn("conversationId 缺失，无法回复，消息：{}", robotMessage);
                 return;
             }
+            // 私聊场景必须有 senderId，否则无法定位回复目标
+            if ("1".equals(conversationType) && (senderId == null || senderId.isBlank())) {
+                log.warn("私聊消息缺少 senderId，无法回复，消息：{}", robotMessage);
+                return;
+            }
 
             // 授权检查：每次指令请求时验证 Gitee 授权状态（30s 缓存）
             if (!LicenseChecker.isActive()) {
@@ -99,8 +104,8 @@ public class UserCommandHandler {
                     text, conversationId, conversationType);
 
             if (text.startsWith(CMD_CREATE)) {
-                String[] parts = parseCreateArgs(text);
-                handleCreate(parts[0], parts[1], conversationType, conversationId, senderId);
+                List<String[]> users = parseBatchCreateArgs(text);
+                handleBatchCreate(users, conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_SEARCH)) {
                 handleSearch(parseArg(text, CMD_SEARCH), conversationType, conversationId, senderId);
             } else if (text.startsWith(CMD_DELETE)) {
@@ -121,22 +126,62 @@ public class UserCommandHandler {
 
     // -------- 指令处理 --------
 
-    private void handleCreate(String nickName, String phone,
-                              String conversationType, String conversationId, String senderId) {
-        if (nickName == null || nickName.isBlank()) {
+    /**
+     * 批量创建用户，支持一次传入多条（逗号分隔），逐条调用 API 并汇总结果。
+     */
+    private void handleBatchCreate(List<String[]> users,
+                                   String conversationType, String conversationId, String senderId) {
+        if (users.isEmpty()) {
             reply(conversationType, conversationId, senderId,
-                    "参数不完整，格式：创建用户 <用户名> <手机号>\n示例：创建用户 张三 13800138000");
-            return;
-        }
-        if (phone == null || phone.isBlank()) {
-            reply(conversationType, conversationId, senderId,
-                    "手机号不能为空，格式：创建用户 <用户名> <手机号>\n示例：创建用户 张三 13800138000");
+                    "参数不完整，格式：\n"
+                            + "  单个：创建用户 张三 13800138000\n"
+                            + "  批量：创建用户 张三 13800138000,李四 13900139000");
             return;
         }
 
-        String result = systemApiService.createUser(nickName, phone);
-        reply(conversationType, conversationId, senderId,
-                buildCreateReply(nickName, phone, result));
+        if (users.size() == 1) {
+            String[] u = users.get(0);
+            if (u[0].isBlank()) {
+                reply(conversationType, conversationId, senderId,
+                        "用户名不能为空，格式：创建用户 <用户名> <手机号>");
+                return;
+            }
+            if (u[1].isBlank()) {
+                reply(conversationType, conversationId, senderId,
+                        "手机号不能为空，格式：创建用户 <用户名> <手机号>");
+                return;
+            }
+            String result = systemApiService.createUser(u[0], u[1]);
+            reply(conversationType, conversationId, senderId,
+                    buildCreateReply(u[0], u[1], result));
+            return;
+        }
+
+        // 批量模式：逐条创建，汇总结果
+        StringBuilder sb = new StringBuilder();
+        sb.append("批量创建结果（共 ").append(users.size()).append(" 人）：\n");
+        int attemptCount = 0;
+        int successCount = 0;
+        for (String[] u : users) {
+            if (u[0].isBlank() || u[1].isBlank()) {
+                sb.append("[跳过] 格式错误：「").append(u[0]).append(" ").append(u[1]).append("」\n");
+                continue;
+            }
+            attemptCount++;
+            String result = systemApiService.createUser(u[0], u[1]);
+            boolean ok = isCreateSuccess(result);
+            if (ok) {
+                successCount++;
+            }
+            sb.append(ok ? "[成功] " : "[失败] ")
+                    .append(u[0]).append("（").append(u[1]).append("）");
+            if (!ok) {
+                sb.append(" - ").append(extractCreateError(result));
+            }
+            sb.append("\n");
+        }
+        sb.append("---\n共成功 ").append(successCount).append(" / ").append(attemptCount).append(" 人");
+        reply(conversationType, conversationId, senderId, sb.toString());
     }
 
     private void handleSearch(String nickName,
@@ -218,7 +263,8 @@ public class UserCommandHandler {
                     return;
                 }
 
-                log.info("收到导出文件，大小 {} 字节，准备上传钉钉", fileData.length);
+                log.info("收到导出文件，大小 {} 字节，插入区域列后上传钉钉", fileData.length);
+                fileData = com.ai.dingding.service.ExcelService.addRegionColumn(fileData);
                 String fileName = buildExportFileName(beginStart, beginEnd);
                 replyFile(conversationType, conversationId, senderId, fileName, fileData);
             } catch (Exception e) {
@@ -287,6 +333,33 @@ public class UserCommandHandler {
     }
 
     // -------- 响应消息格式化 --------
+
+    /** 判断创建用户 API 响应是否成功 */
+    private boolean isCreateSuccess(String rawResult) {
+        if (rawResult == null) {
+            return false;
+        }
+        try {
+            JSONObject resp = JSON.parseObject(rawResult);
+            return resp != null && resp.getInteger("code") == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 从创建用户失败响应中提取错误描述 */
+    private String extractCreateError(String rawResult) {
+        if (rawResult == null) {
+            return "服务异常";
+        }
+        try {
+            JSONObject resp = JSON.parseObject(rawResult);
+            String msg = resp != null ? resp.getString("msg") : null;
+            return msg != null ? msg : rawResult;
+        } catch (Exception e) {
+            return rawResult;
+        }
+    }
 
     private String buildCreateReply(String nickName, String phone, String rawResult) {
         if (rawResult == null) {
@@ -361,21 +434,48 @@ public class UserCommandHandler {
         String end = beginEnd.substring(0, 10);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("新增学员统计（").append(begin).append(" ~ ").append(end).append("）\n");
-        sb.append("共新增 ").append(total).append(" 名学员\n");
-        sb.append("============================\n");
+        sb.append("📊 新增学员统计\n");
+        sb.append("时间：").append(begin).append(" ~ ").append(end).append("\n");
+        sb.append("合计：").append(total).append(" 人\n");
+        sb.append("────────────────────\n");
 
         if (regionCount.isEmpty()) {
             sb.append("（该时间段内无新增学员）");
         } else {
-            sb.append(String.format("%-20s  %s%n", "区域", "新增数量"));
-            sb.append("----------------------------\n");
+            // 区域名最大显示宽度（中文算2字符）
+            int maxRegionWidth = regionCount.keySet().stream()
+                    .mapToInt(k -> displayWidth(k.isBlank() ? "未知区域" : k))
+                    .max().orElse(4);
+            // 数量最大位数（右对齐用）
+            int maxCountWidth = regionCount.values().stream()
+                    .mapToInt(v -> String.valueOf(v).length())
+                    .max().orElse(1);
+
             for (Map.Entry<String, Long> entry : regionCount.entrySet()) {
-                String region = entry.getKey().isBlank() ? "（未知区域）" : entry.getKey();
-                sb.append(String.format("%-20s  %d%n", region, entry.getValue()));
+                String region = entry.getKey().isBlank() ? "未知区域" : entry.getKey();
+                String count = String.valueOf(entry.getValue());
+                int regionPadding = maxRegionWidth - displayWidth(region);
+                int countPadding = maxCountWidth - count.length();
+                sb.append(region)
+                        .append(" ".repeat(Math.max(0, regionPadding)))
+                        .append("  ")
+                        .append(" ".repeat(Math.max(0, countPadding)))
+                        .append(count)
+                        .append(" 人\n");
             }
         }
-        return sb.toString();
+        return sb.toString().stripTrailing();
+    }
+
+    /**
+     * 计算字符串的显示宽度：ASCII 字符算 1，中文及全角字符算 2。
+     */
+    private int displayWidth(String s) {
+        int width = 0;
+        for (char c : s.toCharArray()) {
+            width += (c > 0xFF) ? 2 : 1;
+        }
+        return width;
     }
 
     private String buildExportFileName(String beginStart, String beginEnd) {
@@ -389,6 +489,7 @@ public class UserCommandHandler {
     private String buildHelpText() {
         return "暂不支持该指令，支持格式：\n"
                 + "  创建用户 <用户名> <手机号>\n"
+                + "  创建用户 <用户名1> <手机号1>,<用户名2> <手机号2>\n"
                 + "  搜索用户 <用户名>\n"
                 + "  删除用户 <用户名>\n"
                 + "  导出考试记录 近一周\n"
@@ -454,20 +555,34 @@ public class UserCommandHandler {
      * 解析创建用户指令，返回 [nickName, phone]。
      * 指令格式：创建用户 <用户名> <手机号>
      */
-    private String[] parseCreateArgs(String text) {
+    /**
+     * 解析批量创建用户参数，支持逗号分隔多个用户。
+     * 格式：张三 13800138000,李四 13900139000
+     * 每条格式：<用户名> <手机号>（空格分隔）
+     *
+     * @return 每个元素为 [nickName, phone] 的列表
+     */
+    private List<String[]> parseBatchCreateArgs(String text) {
         String args = text.substring(CMD_CREATE.length()).trim();
         if (args.startsWith("@")) {
             int spaceIdx = args.indexOf(' ');
             args = spaceIdx > 0 ? args.substring(spaceIdx).trim() : "";
         }
-        int splitIdx = args.indexOf(' ');
-        if (splitIdx < 0) {
-            return new String[]{args.trim(), ""};
+
+        List<String[]> result = new java.util.ArrayList<>();
+        // 支持逗号或换行分隔多条用户
+        String[] entries = args.split("[,，\n\r]+");
+        for (String entry : entries) {
+            entry = entry.trim();
+            if (entry.isBlank()) {
+                continue;
+            }
+            String[] parts = entry.split("\\s+", 2);
+            String nickName = parts[0].trim();
+            String phone = parts.length > 1 ? parts[1].trim() : "";
+            result.add(new String[]{nickName, phone});
         }
-        return new String[]{
-            args.substring(0, splitIdx).trim(),
-            args.substring(splitIdx).trim()
-        };
+        return result;
     }
 
     /**

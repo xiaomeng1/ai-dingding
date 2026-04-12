@@ -12,11 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -43,10 +39,6 @@ public class DingTalkMessageService {
             "https://oapi.dingtalk.com/gettoken";
     private static final String MEDIA_UPLOAD_URL =
             "https://oapi.dingtalk.com/media/upload";
-
-    private static final String LOCAL_EXPORT_DIR = System.getProperty("user.home") + "/dingding-exports/";
-    private static final DateTimeFormatter TIMESTAMP_FMT =
-            DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -199,22 +191,13 @@ public class DingTalkMessageService {
     // -------- 文件消息 --------
 
     /**
-     * 将 Excel 文件保存到本地，并上传到钉钉群发送。
-     * 本地文件保留，不自动删除，路径：~/dingding-exports/
+     * 将 Excel 文件上传到钉钉群并发送，文件内容全程在内存中处理，不落盘本地。
      *
      * @param openConversationId 群 openConversationId
      * @param fileName           文件名（含扩展名）
      * @param fileData           文件字节数组
      */
     public void sendExamFile(String openConversationId, String fileName, byte[] fileData) {
-        // 先落盘本地，方便验证文件内容
-//        String localPath = saveLocalFile(fileName, fileData);
-//        if (localPath != null) {
-//            log.info("导出文件已保存到本地：{}", localPath);
-//            sendTextMessage(openConversationId,
-//                    "文件已生成（" + (fileData.length / 1024) + " KB），正在上传到群...\n本地路径：" + localPath);
-//        }
-
         String mediaId = uploadFileViaOldApi(fileName, fileData);
         if (mediaId == null) {
             sendTextMessage(openConversationId,
@@ -222,27 +205,6 @@ public class DingTalkMessageService {
             return;
         }
         sendFileMessage(openConversationId, fileName, mediaId);
-    }
-
-    /**
-     * 将文件保存到本地 ~/dingding-exports/ 目录。
-     *
-     * @return 本地文件绝对路径，失败返回 null
-     */
-    private String saveLocalFile(String fileName, byte[] fileData) {
-        try {
-            Path dir = Path.of(LOCAL_EXPORT_DIR);
-            Files.createDirectories(dir);
-            // 文件名加时间戳避免覆盖
-            String ts = LocalDateTime.now().format(TIMESTAMP_FMT);
-            String savedName = ts + "_" + fileName;
-            Path target = dir.resolve(savedName);
-            Files.write(target, fileData);
-            return target.toAbsolutePath().toString();
-        } catch (IOException e) {
-            log.error("保存文件到本地失败", e);
-            return null;
-        }
     }
 
     /**
