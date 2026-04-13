@@ -12,6 +12,9 @@ DING_APP_SECRET="TvPjo5pkxXU3tzlD1TmXiV2gNX4lzgMip5LzysOFn-x86Z2luSQKHjhhT-0Rzkk
 SYS_USERNAME="19513764334"
 SYS_PASSWORD="zdlb"
 
+# 阿里云百炼 API Key（用于自然语言理解，不填则 NLU 功能不可用）
+BAILIAN_API_KEY="sk-6cf8fadc5c784445b650484fb0a95a27"
+
 # JAR 包路径（与本脚本放在同一目录）
 JAR_FILE="ai-dingding-0.0.1-SNAPSHOT.jar"
 
@@ -54,6 +57,7 @@ nohup java \
   -Dding.appSecret="$DING_APP_SECRET" \
   -Dsys.username="$SYS_USERNAME" \
   -Dsys.password="$SYS_PASSWORD" \
+  ${BAILIAN_API_KEY:+-Dbailian.apiKey="$BAILIAN_API_KEY"} \
   -jar "$JAR_FILE" \
   >> "$LOG_FILE" 2>&1 &
 

@@ -1,6 +1,9 @@
 package com.ai.dingding.handler;
 
 import com.ai.dingding.license.LicenseChecker;
+import com.ai.dingding.nlu.CommandRouter;
+import com.ai.dingding.nlu.NluService;
+import com.ai.dingding.nlu.ParseResult;
 import com.ai.dingding.service.DingTalkMessageService;
 import com.ai.dingding.service.SystemApiService;
 import lombok.extern.log4j.Log4j2;
@@ -66,11 +69,22 @@ public class UserCommandHandler {
 
     private final SystemApiService systemApiService;
     private final DingTalkMessageService dingTalkMessageService;
+    private final NluService nluService;
+    private final CommandRouter commandRouter;
 
     public UserCommandHandler(SystemApiService systemApiService,
                               DingTalkMessageService dingTalkMessageService) {
+        this(systemApiService, dingTalkMessageService, null, null);
+    }
+
+    public UserCommandHandler(SystemApiService systemApiService,
+                              DingTalkMessageService dingTalkMessageService,
+                              NluService nluService,
+                              CommandRouter commandRouter) {
         this.systemApiService = systemApiService;
         this.dingTalkMessageService = dingTalkMessageService;
+        this.nluService = nluService;
+        this.commandRouter = commandRouter;
     }
 
     /**
@@ -119,21 +133,22 @@ public class UserCommandHandler {
             log.info("收到指令：[{}]，conversationId：{}，conversationType：{}",
                     text, conversationId, conversationType);
 
-            if (text.startsWith(CMD_CREATE)) {
-                List<String[]> users = parseBatchCreateArgs(text);
-                handleBatchCreate(users, conversationType, conversationId, senderId);
-            } else if (text.startsWith(CMD_SEARCH)) {
-                handleSearch(parseArg(text, CMD_SEARCH), conversationType, conversationId, senderId);
-            } else if (text.startsWith(CMD_DELETE)) {
-                //handleDelete(parseArg(text, CMD_DELETE), conversationType, conversationId, senderId);
-            } else if (text.startsWith(CMD_EXPORT_EXAM)) {
-                String arg = parseArg(text, CMD_EXPORT_EXAM);
-                handleExportExam(arg, conversationType, conversationId, senderId);
-            } else if (text.startsWith(CMD_STUDENT_STATS)) {
-                String arg = parseArg(text, CMD_STUDENT_STATS);
-                handleStudentStats(arg, conversationType, conversationId, senderId);
+            if (nluService != null) {
+                try {
+                    ParseResult parseResult = nluService.parse(text);
+                    if (parseResult.isUnrecognized()) {
+                        reply(conversationType, conversationId, senderId, parseResult.getHint());
+                        return;
+                    }
+                    commandRouter.route(parseResult, conversationType, conversationId, senderId);
+                } catch (Exception e) {
+                    log.error("NLU 解析异常", e);
+                    reply(conversationType, conversationId, senderId,
+                            "自然语言解析服务暂时不可用，请使用标准指令格式\n" + buildHelpText());
+                }
             } else {
-                reply(conversationType, conversationId, senderId, buildHelpText());
+                reply(conversationType, conversationId, senderId,
+                        "NLU 功能未启用，请使用标准指令格式\n" + buildHelpText());
             }
         } catch (Exception e) {
             log.error("处理机器人消息异常，消息：{}", robotMessage, e);
@@ -145,7 +160,7 @@ public class UserCommandHandler {
     /**
      * 批量创建用户，支持一次传入多条（逗号分隔），逐条调用 API 并汇总结果。
      */
-    private void handleBatchCreate(List<String[]> users,
+    public void handleBatchCreate(List<String[]> users,
                                    String conversationType, String conversationId, String senderId) {
         if (users.isEmpty()) {
             reply(conversationType, conversationId, senderId,
@@ -200,7 +215,7 @@ public class UserCommandHandler {
         reply(conversationType, conversationId, senderId, sb.toString());
     }
 
-    private void handleSearch(String nickName,
+    public void handleSearch(String nickName,
                               String conversationType, String conversationId, String senderId) {
         if (nickName == null || nickName.isBlank()) {
             reply(conversationType, conversationId, senderId,
@@ -253,7 +268,7 @@ public class UserCommandHandler {
      * 导出考试记录，在后台线程执行（避免阻塞钉钉回调超时）。
      * 支持：近一周 / 近一个月 / yyyy-MM-dd yyyy-MM-dd [区域名] / 学生 <姓名>
      */
-    private void handleExportExam(String arg,
+    public void handleExportExam(String arg,
                                    String conversationType, String conversationId, String senderId) {
         ExportParams params = parseExportArg(arg);
         if (params == null) {
@@ -292,7 +307,7 @@ public class UserCommandHandler {
      * 统计各地区新增学员，在后台线程执行。
      * 支持：近一个月 / yyyy-MM-dd yyyy-MM-dd
      */
-    private void handleStudentStats(String arg,
+    public void handleStudentStats(String arg,
                                      String conversationType, String conversationId, String senderId) {
         String[] range = parseTimeRange(arg);
         if (range == null) {
@@ -521,21 +536,44 @@ public class UserCommandHandler {
         }
     }
 
-    private String buildHelpText() {
-        return "暂不支持该指令，支持格式：\n"
-                + "  创建用户 <用户名> <手机号>\n"
-                + "  创建用户 <用户名1> <手机号1>,<用户名2> <手机号2>\n"
-                + "  搜索用户 <用户名>\n"
-//                + "  删除用户 <用户名>\n"
-                + "  导出考试记录 近一周\n"
-                + "  导出考试记录 近一个月\n"
-                + "  导出考试记录 2026-04-01 2026-04-11\n"
-                + "  导出考试记录 近一周 <区域名>\n"
-                + "  导出考试记录 近一个月 <区域名>\n"
-                + "  导出考试记录 2026-04-01 2026-04-11 <区域名>\n"
-                + "  导出考试记录 学生 <学生姓名>\n"
-                + "  统计新增学员 近一个月\n"
-                + "  统计新增学员 2026-03-01 2026-04-11";
+    public String buildHelpText() {
+        return "📖 功能说明 & 指令格式\n"
+                + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                + "💡 支持自然语言，直接描述你想做的事即可，例如：\n"
+                + "   「帮我创建用户 张三 13800138000」\n"
+                + "   「查一下李四这个人」\n"
+                + "   「导出上周的考试记录」\n"
+                + "\n"
+                + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                + "👤 创建用户\n"
+                + "  单个：创建用户 <姓名> <手机号>\n"
+                + "  示例：创建用户 张三 13800138000\n"
+                + "  批量：创建用户 <姓名1> <手机号1>,<姓名2> <手机号2>\n"
+                + "  示例：创建用户 张三 13800138000,李四 13900139000\n"
+                + "\n"
+                + "🔍 搜索用户\n"
+                + "  格式：搜索用户 <姓名>\n"
+                + "  示例：搜索用户 张三\n"
+                + "\n"
+                + "📊 统计新增学员\n"
+                + "  格式：统计新增学员 <时间范围>\n"
+                + "  示例：统计新增学员 近一个月\n"
+                + "        统计新增学员 2026-03-01 2026-04-11\n"
+                + "\n"
+                + "📁 导出考试记录\n"
+                + "  全量导出：\n"
+                + "    导出考试记录 近一周\n"
+                + "    导出考试记录 近一个月\n"
+                + "    导出考试记录 2026-04-01 2026-04-11\n"
+                + "  按区域导出：\n"
+                + "    导出考试记录 近一周 <区域名>\n"
+                + "    导出考试记录 近一个月 <区域名>\n"
+                + "    导出考试记录 2026-04-01 2026-04-11 <区域名>\n"
+                + "  按学生导出：\n"
+                + "    导出考试记录 学生 <学生姓名>\n"
+                + "\n"
+                + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                + "❓ 发送「帮助」或「help」可随时查看本说明";
     }
 
     // -------- 消息路由 --------
@@ -544,7 +582,7 @@ public class UserCommandHandler {
      * 统一回复入口：根据 conversationType 路由到群消息或私聊消息接口。
      * "1" = 私聊，其余视为群聊。
      */
-    private void reply(String conversationType, String conversationId,
+    public void reply(String conversationType, String conversationId,
                        String senderId, String content) {
         if ("1".equals(conversationType)) {
             dingTalkMessageService.sendPrivateTextMessage(senderId, content);
@@ -556,7 +594,7 @@ public class UserCommandHandler {
     /**
      * 统一文件回复入口：根据 conversationType 路由到群文件或私聊文件接口。
      */
-    private void replyFile(String conversationType, String conversationId,
+    public void replyFile(String conversationType, String conversationId,
                            String senderId, String fileName, byte[] fileData) {
         if ("1".equals(conversationType)) {
             dingTalkMessageService.sendPrivateExamFile(senderId, fileName, fileData);
@@ -601,7 +639,7 @@ public class UserCommandHandler {
      *
      * @return 每个元素为 [nickName, phone] 的列表
      */
-    private List<String[]> parseBatchCreateArgs(String text) {
+    public List<String[]> parseBatchCreateArgs(String text) {
         String args = text.substring(CMD_CREATE.length()).trim();
         if (args.startsWith("@")) {
             int spaceIdx = args.indexOf(' ');

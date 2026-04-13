@@ -1,6 +1,9 @@
 package com.ai.dingding;
 
 import com.ai.dingding.handler.UserCommandHandler;
+import com.ai.dingding.nlu.BaiLianClient;
+import com.ai.dingding.nlu.CommandRouter;
+import com.ai.dingding.nlu.NluService;
 import com.ai.dingding.service.DingTalkMessageService;
 import com.ai.dingding.service.SystemApiService;
 import com.dingtalk.open.app.api.OpenDingTalkStreamClientBuilder;
@@ -32,8 +35,10 @@ public class DingDingMain {
         SystemApiService systemApiService = new SystemApiService();
         DingTalkMessageService dingTalkMessageService =
                 new DingTalkMessageService(APP_KEY);
-        UserCommandHandler commandHandler =
-                new UserCommandHandler(systemApiService, dingTalkMessageService);
+
+        // NLU 初始化
+        String baiLianApiKey = System.getProperty("bailian.apiKey");
+        final UserCommandHandler commandHandler = buildCommandHandler(baiLianApiKey, systemApiService, dingTalkMessageService);
 
         OpenDingTalkStreamClientBuilder
                 .custom()
@@ -50,10 +55,10 @@ public class DingDingMain {
 
                         // 优先取 openConversationId（发送群消息时使用），
                         // 不存在则降级使用 conversationId
-                        String conversationId = msg.getString("openConversationId");
-                        if (conversationId == null || conversationId.isBlank()) {
-                            conversationId = msg.getString("conversationId");
-                        }
+                        String openConvId = msg.getString("openConversationId");
+                        final String conversationId = (openConvId == null || openConvId.isBlank())
+                                ? msg.getString("conversationId")
+                                : openConvId;
 
                         if (conversationId == null || conversationId.isBlank()) {
                             log.warn("消息中缺少 conversationId，无法回复，消息：{}", msgStr);
@@ -88,6 +93,27 @@ public class DingDingMain {
                     return new JSONObject();
                 })
                 .build().start();
+    }
+
+    /**
+     * 构建 UserCommandHandler，根据是否配置了百炼 API Key 决定是否启用 NLU。
+     */
+    private static UserCommandHandler buildCommandHandler(String baiLianApiKey,
+            SystemApiService systemApiService, DingTalkMessageService dingTalkMessageService) {
+        if (baiLianApiKey != null && !baiLianApiKey.isBlank()) {
+            try {
+                BaiLianClient baiLianClient = new BaiLianClient();
+                NluService nluService = new NluService(baiLianClient);
+                UserCommandHandler tempHandler = new UserCommandHandler(systemApiService, dingTalkMessageService);
+                CommandRouter commandRouter = new CommandRouter(tempHandler, dingTalkMessageService);
+                return new UserCommandHandler(systemApiService, dingTalkMessageService, nluService, commandRouter);
+            } catch (IllegalStateException e) {
+                log.warn("NLU 初始化失败：{}，将使用无 NLU 模式", e.getMessage());
+            }
+        } else {
+            log.warn("bailian.apiKey 未配置，NLU 功能未启用");
+        }
+        return new UserCommandHandler(systemApiService, dingTalkMessageService);
     }
 
     /**
