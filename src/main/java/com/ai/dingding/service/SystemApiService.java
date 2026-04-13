@@ -158,30 +158,39 @@ public class SystemApiService {
     // -------- 导出考试记录 --------
 
     /**
-     * 下载指定时间范围的考试记录 Excel 文件。
+     * 下载考试记录 Excel，支持按 nickName 筛选。
      *
-     * @param beginStart 开始时间，格式：yyyy-MM-dd HH:mm:ss
-     * @param beginEnd   结束时间，格式：yyyy-MM-dd HH:mm:ss
-     * @return Excel 文件字节数组，失败返回 null
+     * @param nickName   筛选值：区域前缀（"（<区域名>"）或学生姓名；空字符串表示不筛选
+     * @param beginStart 开始时间 yyyy-MM-dd HH:mm:ss；空字符串表示不限制
+     * @param beginEnd   结束时间 yyyy-MM-dd HH:mm:ss；空字符串表示不限制
      */
-    public byte[] exportExamRecords(String beginStart, String beginEnd) {
+    public byte[] exportExamRecords(String nickName, String beginStart, String beginEnd) {
         ensureToken();
         try {
-            String url = buildExportUrl(beginStart, beginEnd);
+            String url = buildExportUrl(nickName, beginStart, beginEnd);
             byte[] result = postBinary(url, "{}", AuthTokenHolder.getSystemToken());
 
             if (isJsonErrorResponse(result)) {
                 String preview = new String(result, StandardCharsets.UTF_8);
-                log.info("导出接口返回 JSON 错误（可能 token 失效），响应：{}，尝试重新登录", preview);
-                if (login()) {
-                    result = postBinary(url, "{}", AuthTokenHolder.getSystemToken());
-                } else {
-                    return null;
+                if (isTokenExpiredJson(preview)) {
+                    log.info("导出接口返回 JSON 错误（可能 token 失效），响应：{}，尝试重新登录", preview);
+                    if (login()) {
+                        result = postBinary(url, "{}", AuthTokenHolder.getSystemToken());
+                    } else {
+                        return null;
+                    }
                 }
             }
 
             if (result == null || result.length == 0) {
                 log.warn("导出接口返回空响应");
+                return null;
+            }
+
+            // 最终检查：如果仍然是 JSON 响应（如空结果 code:200），说明没有导出数据
+            if (isJsonErrorResponse(result)) {
+                String body = new String(result, StandardCharsets.UTF_8);
+                log.warn("导出接口未返回文件流，响应：{}", body);
                 return null;
             }
 
@@ -196,21 +205,55 @@ public class SystemApiService {
         }
     }
 
-    private String buildExportUrl(String beginStart, String beginEnd) {
-        String encodedBegin = URLEncoder.encode(beginStart, StandardCharsets.UTF_8);
-        String encodedEnd = URLEncoder.encode(beginEnd, StandardCharsets.UTF_8);
+    /**
+     * 下载指定时间范围的考试记录 Excel 文件（兼容旧调用，委托给三参数重载）。
+     *
+     * @param beginStart 开始时间，格式：yyyy-MM-dd HH:mm:ss
+     * @param beginEnd   结束时间，格式：yyyy-MM-dd HH:mm:ss
+     * @return Excel 文件字节数组，失败返回 null
+     */
+    public byte[] exportExamRecords(String beginStart, String beginEnd) {
+        return exportExamRecords("", beginStart, beginEnd);
+    }
+
+    private String buildExportUrl(String nickName, String beginStart, String beginEnd) {
+        String encodedNickName = (nickName == null || nickName.isBlank())
+                ? ""
+                : URLEncoder.encode(nickName, StandardCharsets.UTF_8);
+        String encodedBegin = (beginStart == null || beginStart.isBlank())
+                ? ""
+                : URLEncoder.encode(beginStart, StandardCharsets.UTF_8);
+        String encodedEnd = (beginEnd == null || beginEnd.isBlank())
+                ? ""
+                : URLEncoder.encode(beginEnd, StandardCharsets.UTF_8);
         return BASE_URL + "/test/record/export"
-                + "?nickName=&phone=&pageSize=10000&pageNum=1"
+                + "?nickName=" + encodedNickName
+                + "&phone=&pageSize=10000&pageNum=1"
                 + "&beginStart=" + encodedBegin
                 + "&beginEnd=" + encodedEnd;
     }
 
     /**
-     * 判断字节数组是否为 JSON 错误响应（以 '{' 开头）。
-     * 如果服务端返回 JSON，说明发生了业务错误（如 token 失效），而非文件流。
+     * 判断字节数组是否为 JSON 响应（以 '{' 开头）。
+     * 导出接口正常应返回 Excel 二进制流，如果返回 JSON 则说明不是文件数据。
      */
     private boolean isJsonErrorResponse(byte[] data) {
         return data != null && data.length > 0 && data[0] == (byte) '{';
+    }
+
+    /**
+     * 判断 JSON 响应是否为 token 失效（code != 200）。
+     * code:200 的 JSON 表示业务成功但无文件数据（如查询结果为空），不应触发重新登录。
+     */
+    private boolean isTokenExpiredJson(String json) {
+        try {
+            JSONObject resp = JSON.parseObject(json);
+            if (resp == null) return true;
+            Integer code = resp.getInteger("code");
+            return code == null || code != 200;
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     // -------- 全量学员列表 --------
