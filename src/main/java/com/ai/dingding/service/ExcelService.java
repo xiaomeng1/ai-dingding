@@ -24,11 +24,14 @@ public class ExcelService {
     /**
      * 读取 Excel 字节数组，在首列插入"区域"列后返回新字节数组。
      * 处理失败时记录错误并返回原始字节，保证文件可用。
+     *
+     * @param excelBytes       原始 Excel 数据
+     * @param filterNoRegion   是否过滤无括号行；区域导出时传 true，学生/全量导出传 false
      */
-    public static byte[] addRegionColumn(byte[] excelBytes) {
+    public static byte[] addRegionColumn(byte[] excelBytes, boolean filterNoRegion) {
         try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(excelBytes))) {
             for (int si = 0; si < workbook.getNumberOfSheets(); si++) {
-                processSheet(workbook.getSheetAt(si));
+                processSheet(workbook.getSheetAt(si), filterNoRegion);
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
@@ -39,7 +42,14 @@ public class ExcelService {
         }
     }
 
-    private static void processSheet(Sheet sheet) {
+    /**
+     * 兼容旧调用，默认不过滤无括号行（行为与修改前一致）。
+     */
+    public static byte[] addRegionColumn(byte[] excelBytes) {
+        return addRegionColumn(excelBytes, false);
+    }
+
+    private static void processSheet(Sheet sheet, boolean filterNoRegion) {
         Row headerRow = sheet.getRow(0);
         if (headerRow == null) {
             return;
@@ -78,6 +88,26 @@ public class ExcelService {
                 // nickNameColIdx + 1：移位后昵称列向右偏移了一位
                 String nickName = getCellString(row.getCell(nickNameColIdx + 1));
                 firstCell.setCellValue(extractRegion(nickName));
+            }
+        }
+
+        // 过滤误匹配行：仅区域导出时执行，删除 nickName 中不含括号的数据行（跳过表头）
+        if (filterNoRegion) {
+            for (int rowIdx = sheet.getLastRowNum(); rowIdx >= 1; rowIdx--) {
+                Row row = sheet.getRow(rowIdx);
+                if (row == null) {
+                    continue;
+                }
+                // nickNameColIdx + 1：移位后昵称列索引
+                String nickName = getCellString(row.getCell(nickNameColIdx + 1));
+                if (!hasParenthesis(nickName)) {
+                    sheet.removeRow(row);
+                    // 如果下方有行，上移填补空行
+                    int lastRowNum = sheet.getLastRowNum();
+                    if (rowIdx < lastRowNum) {
+                        sheet.shiftRows(rowIdx + 1, lastRowNum, -1);
+                    }
+                }
             }
         }
     }
@@ -119,6 +149,14 @@ public class ExcelService {
             case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
             default      -> cell.toString();
         };
+    }
+
+    /**
+     * 判断字符串是否包含中英文括号。
+     */
+    private static boolean hasParenthesis(String text) {
+        if (text == null) return false;
+        return text.contains("(") || text.contains(")") || text.contains("（") || text.contains("）");
     }
 
     /**

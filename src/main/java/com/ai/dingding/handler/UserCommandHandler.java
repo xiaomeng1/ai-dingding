@@ -52,11 +52,11 @@ public class UserCommandHandler {
 
     /** 导出指令解析结果 */
     private static class ExportParams {
-        /** nickName 筛选值：区域前缀（"（<区域名>"）或学生姓名，null 表示不筛选 */
+        /** nickName 筛选值：区域名或学生姓名，null 表示不筛选 */
         String nickName;
-        /** 开始时间，格式 yyyy-MM-dd HH:mm:ss；学生模式下为 null */
+        /** 开始时间，格式 yyyy-MM-dd HH:mm:ss；null 表示不限时间 */
         String beginStart;
-        /** 结束时间，格式 yyyy-MM-dd HH:mm:ss；学生模式下为 null */
+        /** 结束时间，格式 yyyy-MM-dd HH:mm:ss；null 表示不限时间 */
         String beginEnd;
         /** 用于文件名的可读标签（区域名或学生姓名） */
         String label;
@@ -285,6 +285,15 @@ public class UserCommandHandler {
                 String nickName = params.nickName != null ? params.nickName : "";
                 String beginStart = params.beginStart != null ? params.beginStart : "";
                 String beginEnd = params.beginEnd != null ? params.beginEnd : "";
+
+                // 导出前预检：查询是否有考试记录
+                int recordCount = systemApiService.searchExamRecords(nickName, beginStart, beginEnd);
+                if (recordCount == 0) {
+                    reply(conversationType, conversationId, senderId,
+                            buildNoRecordReply(params));
+                    return;
+                }
+
                 byte[] fileData = systemApiService.exportExamRecords(nickName, beginStart, beginEnd);
                 if (fileData == null || fileData.length == 0) {
                     reply(conversationType, conversationId, senderId,
@@ -293,7 +302,8 @@ public class UserCommandHandler {
                 }
 
                 log.info("收到导出文件，大小 {} 字节，插入区域列后上传钉钉", fileData.length);
-                fileData = com.ai.dingding.service.ExcelService.addRegionColumn(fileData);
+                boolean filterNoRegion = params.mode == ExportMode.REGION;
+                fileData = com.ai.dingding.service.ExcelService.addRegionColumn(fileData, filterNoRegion);
                 String fileName = buildExportFileName(params);
                 replyFile(conversationType, conversationId, senderId, fileName, fileData);
             } catch (Exception e) {
@@ -517,8 +527,17 @@ public class UserCommandHandler {
 
     private String buildExportFileName(ExportParams params) {
         switch (params.mode) {
-            case STUDENT:
-                return "考试记录_" + params.label + ".xlsx";
+            case STUDENT: {
+                StringBuilder sb = new StringBuilder("考试记录_" + params.label);
+                if (params.beginStart != null && params.beginEnd != null) {
+                    String begin = LocalDate.parse(params.beginStart.substring(0, 10), INPUT_DATE_FORMATTER)
+                            .format(FILE_DATE_FORMATTER);
+                    String end = LocalDate.parse(params.beginEnd.substring(0, 10), INPUT_DATE_FORMATTER)
+                            .format(FILE_DATE_FORMATTER);
+                    sb.append("_").append(begin).append("_").append(end);
+                }
+                return sb.append(".xlsx").toString();
+            }
             case REGION: {
                 String begin = LocalDate.parse(params.beginStart.substring(0, 10), INPUT_DATE_FORMATTER)
                         .format(FILE_DATE_FORMATTER);
@@ -571,6 +590,9 @@ public class UserCommandHandler {
                 + "    导出考试记录 2026-04-01 2026-04-11 <区域名>\n"
                 + "  按学生导出：\n"
                 + "    导出考试记录 学生 <学生姓名>\n"
+                + "    导出考试记录 学生 <学生姓名> 近一周\n"
+                + "    导出考试记录 学生 <学生姓名> 近一个月\n"
+                + "    导出考试记录 学生 <学生姓名> 2026-04-01 2026-04-11\n"
                 + "\n"
                 + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 + "❓ 发送「帮助」或「help」可随时查看本说明";
@@ -710,16 +732,60 @@ public class UserCommandHandler {
 
         // 1. 学生模式
         if (arg.startsWith("学生 ") || arg.equals("学生")) {
-            String name = arg.substring("学生".length()).trim();
+            String rest = arg.substring("学生".length()).trim();
+            if (rest.isBlank()) {
+                return null;
+            }
+
+            ExportParams p = new ExportParams();
+            p.mode = ExportMode.STUDENT;
+
+            // 解析：学生 <姓名> [时间范围]
+            // 检查末尾是否有 "近一周" 或 "近一个月"
+            String name = rest;
+            if (rest.endsWith("近一周")) {
+                name = rest.substring(0, rest.length() - 3).trim();
+                String[] range = buildRange(today.minusDays(7), today);
+                p.beginStart = range[0];
+                p.beginEnd = range[1];
+            } else if (rest.endsWith("近一个月")) {
+                name = rest.substring(0, rest.length() - 4).trim();
+                String[] range = buildRange(today.minusMonths(1), today);
+                p.beginStart = range[0];
+                p.beginEnd = range[1];
+            } else {
+                // 尝试匹配末尾的自定义日期范围：yyyy-MM-dd yyyy-MM-dd
+                String[] parts = rest.split("\\s+");
+                if (parts.length >= 3) {
+                    try {
+                        LocalDate endDate = LocalDate.parse(parts[parts.length - 1], INPUT_DATE_FORMATTER);
+                        LocalDate beginDate = LocalDate.parse(parts[parts.length - 2], INPUT_DATE_FORMATTER);
+                        String[] range = buildRange(beginDate, endDate);
+                        p.beginStart = range[0];
+                        p.beginEnd = range[1];
+                        // 姓名是去掉最后两个日期部分
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < parts.length - 2; i++) {
+                            if (i > 0) sb.append(' ');
+                            sb.append(parts[i]);
+                        }
+                        name = sb.toString().trim();
+                    } catch (DateTimeParseException e) {
+                        // 末尾不是日期，当作纯姓名
+                        p.beginStart = null;
+                        p.beginEnd = null;
+                    }
+                } else {
+                    p.beginStart = null;
+                    p.beginEnd = null;
+                }
+            }
+
             if (name.isBlank()) {
                 return null;
             }
-            ExportParams p = new ExportParams();
-            p.mode = ExportMode.STUDENT;
             p.nickName = name;
             p.label = name;
-            p.beginStart = null;
-            p.beginEnd = null;
             return p;
         }
 
@@ -736,7 +802,7 @@ public class UserCommandHandler {
                 p.label = null;
             } else {
                 p.mode = ExportMode.REGION;
-                p.nickName = "(" + region;
+                p.nickName = region;
                 p.label = region;
             }
             return p;
@@ -755,7 +821,7 @@ public class UserCommandHandler {
                 p.label = null;
             } else {
                 p.mode = ExportMode.REGION;
-                p.nickName = "(" + region;
+                p.nickName = region;
                 p.label = region;
             }
             return p;
@@ -778,7 +844,7 @@ public class UserCommandHandler {
                     p.label = null;
                 } else {
                     p.mode = ExportMode.REGION;
-                    p.nickName = "（" + region;
+                    p.nickName = region;
                     p.label = region;
                 }
                 return p;
@@ -806,12 +872,37 @@ public class UserCommandHandler {
     private String buildProgressLabel(ExportParams params) {
         switch (params.mode) {
             case STUDENT:
+                if (params.beginStart != null && params.beginEnd != null) {
+                    return "学生：" + params.label + "，" + formatRangeLabel(params.beginStart, params.beginEnd);
+                }
                 return "学生：" + params.label;
             case REGION:
                 return params.label + "，" + formatRangeLabel(params.beginStart, params.beginEnd);
             default:
                 return formatRangeLabel(params.beginStart, params.beginEnd);
         }
+    }
+
+    /** 构建无考试记录时的回复消息，拼装已知条件 */
+    private String buildNoRecordReply(ExportParams params) {
+        StringBuilder sb = new StringBuilder("未找到符合条件的考试记录\n");
+        sb.append("查询条件：");
+        switch (params.mode) {
+            case STUDENT:
+                sb.append("学生：").append(params.label);
+                if (params.beginStart != null && params.beginEnd != null) {
+                    sb.append("，时间：").append(formatRangeLabel(params.beginStart, params.beginEnd));
+                }
+                break;
+            case REGION:
+                sb.append("区域：").append(params.label);
+                sb.append("，时间：").append(formatRangeLabel(params.beginStart, params.beginEnd));
+                break;
+            default:
+                sb.append("时间：").append(formatRangeLabel(params.beginStart, params.beginEnd));
+                break;
+        }
+        return sb.toString();
     }
 
     /** 构建导出参数格式错误提示 */
@@ -823,7 +914,10 @@ public class UserCommandHandler {
                 + "  导出考试记录 近一周 <区域名>\n"
                 + "  导出考试记录 近一个月 <区域名>\n"
                 + "  导出考试记录 2026-04-01 2026-04-11 <区域名>\n"
-                + "  导出考试记录 学生 <学生姓名>";
+                + "  导出考试记录 学生 <学生姓名>\n"
+                + "  导出考试记录 学生 <学生姓名> 近一周\n"
+                + "  导出考试记录 学生 <学生姓名> 近一个月\n"
+                + "  导出考试记录 学生 <学生姓名> 2026-04-01 2026-04-11";
     }
 
     /** 判断 createTime 字符串是否在 [begin, end] 范围内 */

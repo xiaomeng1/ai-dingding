@@ -58,7 +58,7 @@ public class CommandRouter {
                 String region = params != null ? (String) params.get("region") : null;
                 String arg;
                 if (studentName != null) {
-                    arg = "学生 " + studentName;
+                    arg = "学生 " + studentName + (timeRange != null ? " " + timeRange : "");
                 } else {
                     arg = timeRange + (region != null ? " " + region : "");
                 }

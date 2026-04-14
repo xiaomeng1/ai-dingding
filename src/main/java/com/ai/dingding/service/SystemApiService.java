@@ -155,6 +155,62 @@ public class SystemApiService {
         );
     }
 
+    // -------- 考试记录查询（用于导出前预检）--------
+
+    /**
+     * 查询考试记录数量，用于导出前判断是否有记录。
+     *
+     * @param nickName   筛选值：区域名或学生姓名；空字符串表示不筛选
+     * @param beginStart 开始时间 yyyy-MM-dd HH:mm:ss；空字符串表示不限制
+     * @param beginEnd   结束时间 yyyy-MM-dd HH:mm:ss；空字符串表示不限制
+     * @return 记录总数，查询失败返回 0
+     */
+    public int searchExamRecords(String nickName, String beginStart, String beginEnd) {
+        ensureToken();
+        try {
+            String url = buildSearchExamUrl(nickName, beginStart, beginEnd);
+            String result = executeWithTokenRetryGet(
+                    () -> get(url, AuthTokenHolder.getSystemToken())
+            );
+
+            if (result == null) {
+                return 0;
+            }
+
+            JSONObject resp = JSON.parseObject(result);
+            if (resp == null || resp.getInteger("code") != 200) {
+                return 0;
+            }
+
+            JSONObject data = resp.getJSONObject("data");
+            if (data == null) {
+                return 0;
+            }
+
+            return data.getIntValue("total");
+        } catch (Exception e) {
+            log.error("查询考试记录异常", e);
+            return 0;
+        }
+    }
+
+    private String buildSearchExamUrl(String nickName, String beginStart, String beginEnd) {
+        String encodedNickName = (nickName == null || nickName.isBlank())
+                ? ""
+                : URLEncoder.encode(nickName, StandardCharsets.UTF_8);
+        String encodedBegin = (beginStart == null || beginStart.isBlank())
+                ? ""
+                : URLEncoder.encode(beginStart, StandardCharsets.UTF_8);
+        String encodedEnd = (beginEnd == null || beginEnd.isBlank())
+                ? ""
+                : URLEncoder.encode(beginEnd, StandardCharsets.UTF_8);
+        return BASE_URL + "/test/record/page"
+                + "?nickName=" + encodedNickName
+                + "&phone=&pageSize=1&pageNum=1"
+                + "&beginStart=" + encodedBegin
+                + "&beginEnd=" + encodedEnd;
+    }
+
     // -------- 导出考试记录 --------
 
     /**
@@ -371,6 +427,27 @@ public class SystemApiService {
         }
     }
 
+    /**
+     * 执行 GET API 调用，若 token 失效则重新登录后重试一次。
+     */
+    private String executeWithTokenRetryGet(ApiCall call) {
+        ensureToken();
+        try {
+            String result = call.execute();
+            if (isTokenExpired(result)) {
+                log.info("Token 失效，重新登录后重试");
+                if (login()) {
+                    return call.execute();
+                }
+                return null;
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("GET API 调用异常", e);
+            return null;
+        }
+    }
+
     /** 确保内存中有 token，没有则立即登录 */
     private void ensureToken() {
         if (!AuthTokenHolder.hasSystemToken()) {
@@ -416,6 +493,24 @@ public class SystemApiService {
                 builder.build(), HttpResponse.BodyHandlers.ofString()
         );
         log.debug("POST {} -> status={}", url, response.statusCode());
+        return response.body();
+    }
+
+    private String get(String url, String token) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(15))
+                .header("Accept", "application/json, text/plain, */*")
+                .GET();
+
+        if (token != null && !token.isBlank()) {
+            builder.header("Authorization", token);
+        }
+
+        HttpResponse<String> response = HTTP_CLIENT.send(
+                builder.build(), HttpResponse.BodyHandlers.ofString()
+        );
+        log.debug("GET {} -> status={}", url, response.statusCode());
         return response.body();
     }
 
