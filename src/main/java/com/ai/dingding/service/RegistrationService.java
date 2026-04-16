@@ -14,7 +14,8 @@ import java.util.List;
  * 数据持久化到 ./data/registrations.db，重启不丢失。
  * 表结构：registrations (id INTEGER PRIMARY KEY, name TEXT UNIQUE, phone TEXT,
  *                                  ding_approved INTEGER DEFAULT 0,
- *                                  meeting_approved INTEGER DEFAULT 0)
+ *                                  meeting_approved INTEGER DEFAULT 0,
+ *                                  created_at TEXT, updated_at TEXT)
  */
 @Log4j2
 @Service
@@ -68,19 +69,23 @@ public class RegistrationService {
     }
 
     private void initTable() throws SQLException {
-        String sql = """
-                CREATE TABLE IF NOT EXISTS registrations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL UNIQUE,
-                    phone TEXT NOT NULL,
-                    ding_approved INTEGER DEFAULT 0,
-                    meeting_approved INTEGER DEFAULT 0
-                )
-                """;
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS registrations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        phone TEXT NOT NULL,
+                        ding_approved INTEGER DEFAULT 0,
+                        meeting_approved INTEGER DEFAULT 0,
+                        created_at TEXT,
+                        updated_at TEXT
+                    )
+                    """);
+            // 兼容旧表：若列不存在则添加
+            try { stmt.execute("ALTER TABLE registrations ADD COLUMN created_at TEXT"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE registrations ADD COLUMN updated_at TEXT"); } catch (SQLException ignored) {}
         }
-        log.info("SQLite 内存数据库初始化完成");
+        log.info("SQLite 数据库初始化完成");
     }
 
     /**
@@ -92,12 +97,15 @@ public class RegistrationService {
      */
     public synchronized int batchInsert(List<String[]> users) throws SQLException {
         int inserted = 0;
-        String sql = "INSERT INTO registrations (name, phone) VALUES (?, ?) " +
-                     "ON CONFLICT(name) DO UPDATE SET phone=excluded.phone";
+        String now = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String sql = "INSERT INTO registrations (name, phone, created_at, updated_at) VALUES (?, ?, ?, ?) " +
+                     "ON CONFLICT(name) DO UPDATE SET phone=excluded.phone, updated_at=excluded.updated_at";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (String[] u : users) {
                 ps.setString(1, u[0].trim());
                 ps.setString(2, u[1].trim());
+                ps.setString(3, now);
+                ps.setString(4, now);
                 ps.addBatch();
             }
             int[] results = ps.executeBatch();
@@ -122,8 +130,8 @@ public class RegistrationService {
             throw new IllegalArgumentException("非法的审批字段: " + approvedCol);
         }
         String sql = name != null && !name.isBlank()
-                ? "SELECT id, name, phone, ding_approved, meeting_approved FROM registrations WHERE " + approvedCol + " = 0 AND name LIKE ?"
-                : "SELECT id, name, phone, ding_approved, meeting_approved FROM registrations WHERE " + approvedCol + " = 0";
+                ? "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations WHERE " + approvedCol + " = 0 AND name LIKE ?"
+                : "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations WHERE " + approvedCol + " = 0";
 
         List<JSONObject> results = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -138,6 +146,8 @@ public class RegistrationService {
                     row.put("phone", rs.getString("phone"));
                     row.put("dingApproved", rs.getInt("ding_approved") == 1);
                     row.put("meetingApproved", rs.getInt("meeting_approved") == 1);
+                    row.put("createdAt", rs.getString("created_at"));
+                    row.put("updatedAt", rs.getString("updated_at"));
                     results.add(row);
                 }
             }
@@ -159,11 +169,13 @@ public class RegistrationService {
         if (meetingApproved != null) sets.add("meeting_approved = ?");
         if (sets.isEmpty()) return 0;
 
+        sets.add("updated_at = ?");
         String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE name = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             if (dingApproved != null) ps.setBoolean(idx++, dingApproved);
             if (meetingApproved != null) ps.setBoolean(idx++, meetingApproved);
+            ps.setString(idx++, java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             ps.setString(idx, name.trim());
             return ps.executeUpdate();
         }
@@ -190,7 +202,7 @@ public class RegistrationService {
      * 查询全部报名记录。
      */
     public synchronized List<JSONObject> findAll() throws SQLException {
-        String sql = "SELECT id, name, phone, ding_approved, meeting_approved FROM registrations ORDER BY id DESC";
+        String sql = "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations ORDER BY id DESC";
         List<JSONObject> results = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -201,6 +213,8 @@ public class RegistrationService {
                 row.put("phone", rs.getString("phone"));
                 row.put("dingApproved", rs.getInt("ding_approved") == 1);
                 row.put("meetingApproved", rs.getInt("meeting_approved") == 1);
+                row.put("createdAt", rs.getString("created_at"));
+                row.put("updatedAt", rs.getString("updated_at"));
                 results.add(row);
             }
         }

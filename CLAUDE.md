@@ -91,6 +91,24 @@ Long-running operations (exam export, student stats) run in a cached thread pool
 - **DingTalk token**: cached in `AuthTokenHolder`, refreshed when within 5min of expiry
 - **Backend token**: lazy login on first use, auto-retry on 401/500 responses via `executeWithTokenRetry()`
 
+### Dev Profile & Simulate Endpoint
+
+When running with `--spring.profiles.active=dev`, a `SimulateController` is activated at `POST /simulate/message`. It accepts a JSON body and returns captured replies — useful for testing without a real DingTalk connection:
+
+```json
+// Request
+{ "content": "创建用户 张三 13800138000", "conversationType": "2" }
+
+// Response
+{ "replies": [{ "type": "text", "target": "sim-conv-001", "text": "..." }] }
+```
+
+`ReplyCapture` intercepts replies during simulation (waits up to 30s for async ops).
+
+### Test Structure
+
+Tests in `src/test/` cover: `BaiLianClientTest`, `NluServicePropertyTest`, `CommandRouterTest`, `UserCommandHandlerTest`, `ParseResultPropertyTest`, `SimulateApiTest` (requires dev profile + running server).
+
 ## Important Patterns
 
 - **All DingTalk replies** must go through `UserCommandHandler.reply()` or `replyFile()` — never directly call `sendTextMessage()` or `sendExamFile()`. This ensures correct routing between group chat (conversationId) and private chat (senderId).
