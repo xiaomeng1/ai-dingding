@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c \"set JAVA_HOME=D:\\\\develop\\\\jdk8&& .\\\\mvnw.cmd clean package -DskipTests\")"
+    ]
+  }
+}
