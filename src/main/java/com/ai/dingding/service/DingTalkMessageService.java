@@ -1,6 +1,7 @@
 package com.ai.dingding.service;
 
 import com.ai.dingding.holder.AuthTokenHolder;
+import com.ai.dingding.simulate.ReplyCapture;
 import lombok.extern.log4j.Log4j2;
 import shade.com.alibaba.fastjson2.JSON;
 import shade.com.alibaba.fastjson2.JSONObject;
@@ -18,6 +19,7 @@ import java.util.UUID;
 /**
  * 封装钉钉 OpenAPI 消息发送（文本消息 + 文件消息）。
  * accessToken 使用内存缓存，临近过期（5 分钟内）自动刷新。
+ * 若 {@link ReplyCapture} 处于捕获模式，消息会被拦截写入捕获器而不实际发送。
  */
 @Log4j2
 public class DingTalkMessageService {
@@ -46,8 +48,15 @@ public class DingTalkMessageService {
 
     private final String robotCode;
 
+    /** 可选的回复捕获器，dev 模式下由 Spring 注入，生产为 null */
+    private ReplyCapture replyCapture;
+
     public DingTalkMessageService(String robotCode) {
         this.robotCode = robotCode;
+    }
+
+    public void setReplyCapture(ReplyCapture replyCapture) {
+        this.replyCapture = replyCapture;
     }
 
     // -------- 文本消息 --------
@@ -59,6 +68,11 @@ public class DingTalkMessageService {
      * @param content            消息内容
      */
     public void sendTextMessage(String openConversationId, String content) {
+        if (replyCapture != null && replyCapture.isCapturing()) {
+            log.info("[模拟] 拦截群消息 -> {}: {}", openConversationId, content);
+            replyCapture.addText(openConversationId, content);
+            return;
+        }
         try {
             String accessToken = getAccessToken();
             if (accessToken == null) {
@@ -101,6 +115,11 @@ public class DingTalkMessageService {
      * @param content 消息内容
      */
     public void sendPrivateTextMessage(String userId, String content) {
+        if (replyCapture != null && replyCapture.isCapturing()) {
+            log.info("[模拟] 拦截私聊消息 -> {}: {}", userId, content);
+            replyCapture.addText(userId, content);
+            return;
+        }
         try {
             String accessToken = getAccessToken();
             if (accessToken == null) {
@@ -142,6 +161,11 @@ public class DingTalkMessageService {
      * @param fileData 文件字节数组
      */
     public void sendPrivateExamFile(String userId, String fileName, byte[] fileData) {
+        if (replyCapture != null && replyCapture.isCapturing()) {
+            log.info("[模拟] 拦截私聊文件 -> {}: {}", userId, fileName);
+            replyCapture.addFile(userId, fileName);
+            return;
+        }
         String mediaId = uploadFileViaOldApi(fileName, fileData);
         if (mediaId == null) {
             sendPrivateTextMessage(userId, "钉钉文件上传失败，请联系管理人员！");
@@ -198,6 +222,11 @@ public class DingTalkMessageService {
      * @param fileData           文件字节数组
      */
     public void sendExamFile(String openConversationId, String fileName, byte[] fileData) {
+        if (replyCapture != null && replyCapture.isCapturing()) {
+            log.info("[模拟] 拦截群文件 -> {}: {}", openConversationId, fileName);
+            replyCapture.addFile(openConversationId, fileName);
+            return;
+        }
         String mediaId = uploadFileViaOldApi(fileName, fileData);
         if (mediaId == null) {
             sendTextMessage(openConversationId,

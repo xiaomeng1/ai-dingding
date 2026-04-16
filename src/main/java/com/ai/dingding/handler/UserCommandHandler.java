@@ -813,9 +813,8 @@ public class UserCommandHandler {
 
     /**
      * 解析批量创建用户参数，支持逗号分隔多个用户。
-     * 格式：张三 13800138000,李四 13900139000
-     * 智能地区合并：张三 五家渠 13800138000 → nickName="张三（五家渠）", phone="13800138000"
-     * 判断依据：第二个 token 不是纯数字则视为地区名，自动拼入括号
+     * 格式：姓名 手机号，多个用逗号分隔。
+     * 地区合并由 NLU 模型在上游完成，此处只做简单的"姓名 手机号"两段解析。
      *
      * @return 每个元素为 [nickName, phone] 的列表
      */
@@ -832,32 +831,13 @@ public class UserCommandHandler {
         for (String entry : entries) {
             entry = entry.trim();
             if (entry.isBlank()) continue;
-            String[] parts = entry.split("\\s+");
-            if (parts.length == 0) continue;
-
-            String nickName;
-            String phone;
-
-            if (parts.length >= 3 && !isPhoneNumber(parts[1])) {
-                // 格式：姓名 地区 手机号 → 合并为「姓名（地区）」
-                nickName = parts[0].trim() + "（" + parts[1].trim() + "）";
-                phone = parts[2].trim();
-            } else if (parts.length >= 2) {
-                // 格式：姓名 手机号
-                nickName = parts[0].trim();
-                phone = parts[1].trim();
-            } else {
-                nickName = parts[0].trim();
-                phone = "";
-            }
+            // 按第一个空白分割：左边是完整用户名（含括号地区），右边是手机号
+            String[] parts = entry.split("\\s+", 2);
+            String nickName = parts[0].trim();
+            String phone = parts.length > 1 ? parts[1].trim() : "";
             result.add(new String[]{nickName, phone});
         }
         return result;
-    }
-
-    /** 判断字符串是否为手机号（纯数字，长度 7-15） */
-    private boolean isPhoneNumber(String s) {
-        return s != null && s.matches("\\d{7,15}");
     }
 
     /**

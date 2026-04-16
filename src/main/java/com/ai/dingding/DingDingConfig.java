@@ -7,9 +7,11 @@ import com.ai.dingding.nlu.NluService;
 import com.ai.dingding.service.DingTalkMessageService;
 import com.ai.dingding.service.RegistrationService;
 import com.ai.dingding.service.SystemApiService;
+import com.ai.dingding.simulate.ReplyCapture;
 import com.dingtalk.open.app.api.OpenDingTalkStreamClientBuilder;
 import com.dingtalk.open.app.api.security.AuthClientCredential;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,10 @@ import shade.com.alibaba.fastjson2.JSONObject;
 @Configuration
 public class DingDingConfig {
 
+    /** dev profile 下自动注入，生产为 null（ReplyCapture 只在 dev 下存在） */
+    @Autowired(required = false)
+    private ReplyCapture replyCapture;
+
     @Bean
     public SystemApiService systemApiService() {
         return new SystemApiService();
@@ -31,7 +37,12 @@ public class DingDingConfig {
     @Bean
     public DingTalkMessageService dingTalkMessageService() {
         String appKey = System.getProperty("ding.appKey");
-        return new DingTalkMessageService(appKey);
+        DingTalkMessageService service = new DingTalkMessageService(appKey);
+        if (replyCapture != null) {
+            service.setReplyCapture(replyCapture);
+            log.info("dev 模式：ReplyCapture 已注入 DingTalkMessageService");
+        }
+        return service;
     }
 
     @Bean
@@ -51,6 +62,11 @@ public class DingDingConfig {
             UserCommandHandler commandHandler,
             DingTalkMessageService dingTalkMessageService) {
         return args -> {
+            // dev 模式下跳过钉钉 Stream 连接，仅启动模拟接口
+            if (replyCapture != null) {
+                log.info("dev 模式：跳过钉钉 Stream 客户端启动，使用 /simulate/message 接口测试");
+                return;
+            }
             validateRequiredProperties();
             String appKey = System.getProperty("ding.appKey");
             String appSecret = System.getProperty("ding.appSecret");
