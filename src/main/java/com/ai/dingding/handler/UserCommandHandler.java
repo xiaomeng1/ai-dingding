@@ -168,7 +168,8 @@ public class UserCommandHandler {
                             "自然语言解析服务暂时不可用，请使用标准指令格式\n" + buildHelpText());
                 }
             } else {
-                routeByKeyword(text, conversationType, conversationId, senderId);
+                reply(conversationType, conversationId, senderId,
+                        "NLU 功能未启用，请使用标准指令格式\n" + buildHelpText());
             }
         } catch (Exception e) {
             log.error("处理机器人消息异常，消息：{}", robotMessage, e);
