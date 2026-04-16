@@ -1,3 +1,4 @@
+/*
 package com.ai.dingding;
 
 import com.ai.dingding.handler.UserCommandHandler;
@@ -15,9 +16,13 @@ import shade.com.alibaba.fastjson2.JSONObject;
 @Log4j2
 public class DingDingMain {
 
-    /** 从 JVM 启动参数读取：-Dding.appKey=xxx */
+    */
+/** 从 JVM 启动参数读取：-Dding.appKey=xxx *//*
+
     private static final String APP_KEY = System.getProperty("ding.appKey");
-    /** 从 JVM 启动参数读取：-Dding.appSecret=xxx */
+    */
+/** 从 JVM 启动参数读取：-Dding.appSecret=xxx *//*
+
     private static final String APP_SECRET = System.getProperty("ding.appSecret");
 
     private static final String STARTUP_HELP =
@@ -95,9 +100,11 @@ public class DingDingMain {
                 .build().start();
     }
 
-    /**
+    */
+/**
      * 构建 UserCommandHandler，根据是否配置了百炼 API Key 决定是否启用 NLU。
-     */
+     *//*
+
     private static UserCommandHandler buildCommandHandler(String baiLianApiKey,
             SystemApiService systemApiService, DingTalkMessageService dingTalkMessageService) {
         if (baiLianApiKey != null && !baiLianApiKey.isBlank()) {
@@ -116,9 +123,11 @@ public class DingDingMain {
         return new UserCommandHandler(systemApiService, dingTalkMessageService);
     }
 
-    /**
+    */
+/**
      * 校验必要的 JVM 启动参数，任意一个缺失则打印提示并退出。
-     */
+     *//*
+
     private static void validateRequiredProperties() {
         String[] required = {"ding.appKey", "ding.appSecret", "sys.username", "sys.password"};
         boolean hasError = false;
@@ -134,9 +143,11 @@ public class DingDingMain {
         }
     }
 
-    /**
+    */
+/**
      * 从消息体中提取文本内容，兼容多种字段结构。
-     */
+     *//*
+
     private static String extractContent(JSONObject msg) {
         // 标准格式：text.content
         JSONObject text = msg.getJSONObject("text");
@@ -150,3 +161,4 @@ public class DingDingMain {
         return msg.getString("content");
     }
 }
+*/

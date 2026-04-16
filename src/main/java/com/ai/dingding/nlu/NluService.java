@@ -33,7 +33,10 @@ public class NluService {
             4. STUDENT_STATS（学生统计）
                - params.timeRange（必填）：时间范围，可以是"近一周"、"近一个月"，或自定义日期范围（格式：yyyy-MM-dd yyyy-MM-dd）
 
-            5. HELP（帮助）
+            5. REGISTER_SUCCESS（报名成功）
+               - params.users：要报名的用户列表，格式为"姓名 手机号"，多个用户用英文逗号分隔，例如：张三 13800138000,李四 13900139000
+
+            6. HELP（帮助）
                - 无需参数，用户询问使用方法、帮助、怎么用、支持什么功能，或发送"帮助"、"help"、"？"、"?"时使用
 
             输出格式要求：

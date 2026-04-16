@@ -5,6 +5,7 @@ import com.ai.dingding.nlu.CommandRouter;
 import com.ai.dingding.nlu.NluService;
 import com.ai.dingding.nlu.ParseResult;
 import com.ai.dingding.service.DingTalkMessageService;
+import com.ai.dingding.service.RegistrationService;
 import com.ai.dingding.service.SystemApiService;
 import lombok.extern.log4j.Log4j2;
 import shade.com.alibaba.fastjson2.JSON;
@@ -69,20 +70,31 @@ public class UserCommandHandler {
 
     private final SystemApiService systemApiService;
     private final DingTalkMessageService dingTalkMessageService;
+    private final RegistrationService registrationService;
     private final NluService nluService;
     private final CommandRouter commandRouter;
 
     public UserCommandHandler(SystemApiService systemApiService,
-                              DingTalkMessageService dingTalkMessageService) {
-        this(systemApiService, dingTalkMessageService, null, null);
+                              DingTalkMessageService dingTalkMessageService,
+                              RegistrationService registrationService) {
+        this(systemApiService, dingTalkMessageService, registrationService, null, null);
     }
 
     public UserCommandHandler(SystemApiService systemApiService,
                               DingTalkMessageService dingTalkMessageService,
                               NluService nluService,
                               CommandRouter commandRouter) {
+        this(systemApiService, dingTalkMessageService, null, nluService, commandRouter);
+    }
+
+    public UserCommandHandler(SystemApiService systemApiService,
+                              DingTalkMessageService dingTalkMessageService,
+                              RegistrationService registrationService,
+                              NluService nluService,
+                              CommandRouter commandRouter) {
         this.systemApiService = systemApiService;
         this.dingTalkMessageService = dingTalkMessageService;
+        this.registrationService = registrationService;
         this.nluService = nluService;
         this.commandRouter = commandRouter;
     }
@@ -213,6 +225,53 @@ public class UserCommandHandler {
         }
         sb.append("---\n共成功 ").append(successCount).append(" / ").append(attemptCount).append(" 人");
         reply(conversationType, conversationId, senderId, sb.toString());
+    }
+
+    /**
+     * 批量写入报名记录到 SQLite 内存数据库，支持一次传入多条（逗号分隔）。
+     */
+    public void handleRegisterSuccess(List<String[]> users,
+                                       String conversationType, String conversationId, String senderId) {
+        if (registrationService == null) {
+            reply(conversationType, conversationId, senderId,
+                    "报名功能暂不可用，请联系管理员");
+            return;
+        }
+        if (users.isEmpty()) {
+            reply(conversationType, conversationId, senderId,
+                    "参数不完整，格式：\n"
+                            + "  单个：报名成功 张三 13800138000\n"
+                            + "  批量：报名成功 张三 13800138000,李四 13900139000");
+            return;
+        }
+
+        // 过滤掉用户名为空或手机号为空
+        List<String[]> validUsers = users.stream()
+                .filter(u -> u[0] != null && !u[0].isBlank() && u[1] != null && !u[1].isBlank())
+                .collect(Collectors.toList());
+        if (validUsers.isEmpty()) {
+            reply(conversationType, conversationId, senderId,
+                    "用户名和手机号均不能为空，格式：报名成功 <姓名> <手机号>");
+            return;
+        }
+
+        try {
+            int inserted = registrationService.batchInsert(validUsers);
+            String names = validUsers.stream()
+                    .map(u -> u[0])
+                    .collect(Collectors.joining("、"));
+            if (inserted > 0) {
+                reply(conversationType, conversationId, senderId,
+                        "报名成功（新增 " + inserted + " 条）：" + names);
+            } else {
+                reply(conversationType, conversationId, senderId,
+                        "报名记录已存在（" + names + "），手机号已更新");
+            }
+        } catch (Exception e) {
+            log.error("写入报名记录异常", e);
+            reply(conversationType, conversationId, senderId,
+                    "报名成功写入失败：" + e.getMessage());
+        }
     }
 
     public void handleSearch(String nickName,
@@ -569,6 +628,12 @@ public class UserCommandHandler {
                 + "  示例：创建用户 张三 13800138000\n"
                 + "  批量：创建用户 <姓名1> <手机号1>,<姓名2> <手机号2>\n"
                 + "  示例：创建用户 张三 13800138000,李四 13900139000\n"
+                + "\n"
+                + "📝 报名成功\n"
+                + "  单个：报名成功 <姓名> <手机号>\n"
+                + "  示例：报名成功 张三 13800138000\n"
+                + "  批量：报名成功 <姓名1> <手机号1>,<姓名2> <手机号2>\n"
+                + "  示例：报名成功 张三 13800138000,李四 13900139000\n"
                 + "\n"
                 + "🔍 搜索用户\n"
                 + "  格式：搜索用户 <姓名>\n"

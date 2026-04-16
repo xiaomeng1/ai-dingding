@@ -16,7 +16,7 @@ public class CommandRouter {
 
     /** 合法意图集合 */
     public static final Set<String> VALID_INTENTS = Set.of(
-            "CREATE_USER", "SEARCH_USER", "EXPORT_EXAM", "STUDENT_STATS", "HELP"
+            "CREATE_USER", "SEARCH_USER", "EXPORT_EXAM", "STUDENT_STATS", "REGISTER_SUCCESS", "HELP"
     );
 
     private final UserCommandHandler handler;
@@ -68,6 +68,12 @@ public class CommandRouter {
             case "STUDENT_STATS": {
                 String timeRange = params != null ? (String) params.get("timeRange") : null;
                 handler.handleStudentStats(timeRange, conversationType, conversationId, senderId);
+                break;
+            }
+            case "REGISTER_SUCCESS": {
+                String users = params != null ? toUsersString(params.get("users")) : null;
+                List<String[]> userList = handler.parseBatchCreateArgs("报名 " + users);
+                handler.handleRegisterSuccess(userList, conversationType, conversationId, senderId);
                 break;
             }
             case "HELP": {

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${pageTitle}">报名管理</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 20px; }
+
+        .toolbar { background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .toolbar select, .toolbar input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .toolbar input[name="name"] { width: 160px; }
+        button { padding: 8px 16px; background: #1677ff; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #4096ff; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.ding { background: #52c41a; }
+        button.ding:hover { background: #73d13d; }
+        button.meeting { background: #722ed1; }
+        button.meeting:hover { background: #9254de; }
+
+        .card { background: #fff; border-radius: 8px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        th { background: #fafafa; font-weight: 600; color: #333; }
+        tr:hover { background: #fafafa; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .badge-yes { background: #d9f7be; color: #389e0d; }
+        .badge-no { background: #fff1b8; color: #d48806; }
+        .actions { display: flex; gap: 6px; }
+
+        .msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; }
+        .msg.ok { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+        .msg.err { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+        .loading { text-align: center; padding: 20px; color: #999; }
+
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📋 报名管理</h1>
+
+    <div id="msgBox"></div>
+
+    <div class="toolbar">
+        <select id="fieldSelect">
+            <option value="all">全部记录</option>
+            <option value="ding">钉钉群未审批</option>
+            <option value="meeting">会议录播未审批</option>
+        </select>
+        <input type="text" name="name" id="nameInput" placeholder="搜索姓名...">
+        <button onclick="loadData()">查询</button>
+        <button onclick="showAddDialog()">+ 新增报名</button>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>姓名</th>
+                    <th>手机号</th>
+                    <th>钉钉群审批</th>
+                    <th>会议录播审批</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="6" class="loading">加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新增报名弹窗 -->
+<div id="addDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:#fff; border-radius:8px; padding:24px; width:400px;">
+        <h3 style="margin-bottom:16px;">新增报名</h3>
+        <div id="addMsg" class="msg" style="display:none;"></div>
+        <textarea id="addText" rows="6" placeholder="格式：姓名 手机号，多条用换行分隔&#10;示例：&#10;张三 13800138000&#10;李四 13900139000"
+            style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; resize:vertical;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+            <button onclick="document.getElementById('addDialog').style.display='none'" style="background:#fff; color:#333; border:1px solid #ddd;">取消</button>
+            <button onclick="submitAdd()">提交</button>
+        </div>
+    </div>
+</div>
+
+<!-- 更新审批弹窗 -->
+<div id="updateDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:#fff; border-radius:8px; padding:24px; width:360px;">
+        <h3 id="updateTitle" style="margin-bottom:16px;">更新审批状态</h3>
+        <div id="updateMsg" class="msg" style="display:none;"></div>
+        <label style="display:block; margin-bottom:12px;">
+            <input type="checkbox" id="chkDing"> 钉钉群已审批
+        </label>
+        <label style="display:block; margin-bottom:16px;">
+            <input type="checkbox" id="chkMeeting"> 会议录播已审批
+        </label>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button onclick="document.getElementById('updateDialog').style.display='none'" style="background:#fff; color:#333; border:1px solid #ddd;">取消</button>
+            <button onclick="submitUpdate()">确认</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentName = '';
+let updateTarget = null;
+
+function showMsg(text, isOk) {
+    document.getElementById('msgBox').innerHTML =
+        '<div class="msg ' + (isOk ? 'ok' : 'err') + '">' + text + '</div>';
+    if (isOk) setTimeout(() => document.getElementById('msgBox').innerHTML = '', 3000);
+}
+
+function loadData() {
+    const field = document.getElementById('fieldSelect').value;
+    const name = document.getElementById('nameInput').value.trim();
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
+
+    let url;
+    if (field === 'all') {
+        url = '/registrations/api';
+    } else {
+        url = '/registrations/api/unapproved?field=' + encodeURIComponent(field) + (name ? '&name=' + encodeURIComponent(name) : '');
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    fetch(url, { signal: controller.signal })
+        .then(r => {
+            clearTimeout(timeoutId);
+            if (!r.ok) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">请求失败 HTTP ' + r.status + '</td></tr>';
+                return null;
+            }
+            return r.json();
+        })
+        .then(data => {
+            if (!data) return;
+            if (data.code !== 200) {
+                showMsg('接口错误: ' + (data.error || '未知错误'), false);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">接口错误: ' + esc(data.error || '') + '</td></tr>';
+                return;
+            }
+            const list = data.data || [];
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">暂无数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map((r, i) => {
+                const dingCls = r.dingApproved ? 'badge-yes' : 'badge-no';
+                const dingTxt = r.dingApproved ? '✓ 已审批' : '✗ 未审批';
+                const meetCls = r.meetingApproved ? 'badge-yes' : 'badge-no';
+                const meetTxt = r.meetingApproved ? '✓ 已审批' : '✗ 未审批';
+                return '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + esc(r.name) + '</td>' +
+                    '<td>' + esc(r.phone) + '</td>' +
+                    '<td><span class="badge ' + dingCls + '">' + dingTxt + '</span></td>' +
+                    '<td><span class="badge ' + meetCls + '">' + meetTxt + '</span></td>' +
+                    '<td class="actions">' +
+                    '<button class="ding" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, true, false)">钉钉</button>' +
+                    '<button class="meeting" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, false, true)">会议</button>' +
+                    '</td></tr>';
+            }).join('');
+        })
+        .catch(e => {
+            clearTimeout(timeoutId);
+            const msg = e.name === 'AbortError' ? '请求超时（10秒）' : '加载失败：' + e.message;
+            showMsg(msg, false);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">' + msg + '</td></tr>';
+        });
+}
+
+function showAddDialog() {
+    document.getElementById('addText').value = '';
+    document.getElementById('addMsg').style.display = 'none';
+    document.getElementById('addDialog').style.display = 'flex';
+}
+
+function submitAdd() {
+    // 报名通过钉钉指令，这里提示用户
+    showMsg('请在钉钉群发送「报名成功 姓名 手机号」指令进行报名', true);
+    document.getElementById('addDialog').style.display = 'none';
+}
+
+let updateName = '';
+function showUpdateDialog(name, initDing, initMeeting) {
+    updateName = name;
+    document.getElementById('updateTitle').textContent = '更新审批 — ' + name;
+    document.getElementById('chkDing').checked = initDing;
+    document.getElementById('chkMeeting').checked = initMeeting;
+    document.getElementById('updateMsg').style.display = 'none';
+    document.getElementById('updateDialog').style.display = 'flex';
+}
+
+function submitUpdate() {
+    const ding = document.getElementById('chkDing').checked;
+    const meeting = document.getElementById('chkMeeting').checked;
+    document.getElementById('updateDialog').style.display = 'none';
+
+    fetch('/registrations/api/approve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: updateName, dingApproved: ding, meetingApproved: meeting})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.code === 200) {
+            showMsg('更新成功', true);
+            loadData();
+        } else {
+            showMsg(data.error || '更新失败', false);
+        }
+    })
+    .catch(e => showMsg('更新失败：' + e.message, false));
+}
+
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 回车搜索
+document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
+
+loadData();
+</script>
+</body>
+</html>

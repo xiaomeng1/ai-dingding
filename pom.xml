@@ -44,10 +44,15 @@
             <artifactId>openai-java</artifactId>
             <version>3.5.0</version>
         </dependency>
-        <!-- 仅保留基础 starter：含 Logback + log4j-to-slf4j 桥接（兼容 @Log4j2），不启动 Web 容器 -->
+        <!-- Spring Boot Web + MVC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- Thymeleaf 模板引擎（用于报名页面） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
         <!-- Apache POI：处理 Excel 文件（添加区域列） -->
         <dependency>
@@ -60,6 +65,13 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- SQLite for in-memory registration database -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.45.1.0</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -89,7 +101,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.ai.dingding.DingDingMain</mainClass>
+                    <mainClass>com.ai.dingding.Application</mainClass>
                 </configuration>
             </plugin>
         </plugins>
