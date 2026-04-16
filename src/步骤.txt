@@ -142,3 +142,43 @@ curl 'https://os.zhida-keji.com.cn/api/test/record/page?nickName=%E9%83%91%E4%BA
   -H 'sec-ch-ua-platform: "Windows"'
 
   {"msg":"操作成功","code":200,"data":{"records":[{"id":864167,"userId":142318,"examinationRoomId":3,"title":"模拟卷","totalScore":100.0,"passingGrade":60.0,"score":73.0,"lengthOfTime":5113,"general":200,"correctQuantity":146,"howWrong":54,"scoreDetailList":"[{\"correctQuantity\":81,\"dictLabel\":\"单选题\",\"dictValue\":1,\"general\":100,\"score\":40.5,\"totalScore\":50.0},{\"correctQuantity\":21,\"dictLabel\":\"多选题\",\"dictValue\":2,\"general\":40,\"score\":10.5,\"totalScore\":20.0},{\"correctQuantity\":44,\"dictLabel\":\"判断题\",\"dictValue\":3,\"general\":60,\"score\":22.0,\"totalScore\":30.0}]","orderNum":100,"deptId":289,"delFlag":"0","createBy":"郑亚琴（五家渠）","createTime":"2026-04-14 14:02:08","updateBy":"郑亚琴（五家渠）","updateTime":"2026-04-14 14:02:08","remark":null,"nickName":"郑亚琴（五家渠）","deptName":"中德利邦职业技能培训中心","roomTitle":"中级监控-理论题库"},{"id":862432,"userId":142318,"examinationRoomId":3,"title":"模拟卷","totalScore":100.0,"passingGrade":60.0,"score":26.0,"lengthOfTime":3061,"general":200,"correctQuantity":52,"howWrong":148,"scoreDetailList":"[{\"correctQuantity\":0,\"dictLabel\":\"单选题\",\"dictValue\":1,\"general\":100,\"score\":0.0,\"totalScore\":50.0},{\"correctQuantity\":0,\"dictLabel\":\"多选题\",\"dictValue\":2,\"general\":40,\"score\":0.0,\"totalScore\":20.0},{\"correctQuantity\":52,\"dictLabel\":\"判断题\",\"dictValue\":3,\"general\":60,\"score\":26.0,\"totalScore\":30.0}]","orderNum":100,"deptId":289,"delFlag":"0","createBy":"郑亚琴（五家渠）","createTime":"2026-04-13 19:17:06","updateBy":"郑亚琴（五家渠）","updateTime":"2026-04-13 19:17:06","remark":null,"nickName":"郑亚琴（五家渠）","deptName":"中德利邦职业技能培训中心","roomTitle":"中级监控-理论题库"},{"id":862219,"userId":142318,"examinationRoomId":3,"title":"模拟卷","totalScore":100.0,"passingGrade":60.0,"score":1.0,"lengthOfTime":202,"general":200,"correctQuantity":2,"howWrong":198,"scoreDetailList":"[{\"correctQuantity\":2,\"dictLabel\":\"单选题\",\"dictValue\":1,\"general\":100,\"score\":1.0,\"totalScore\":50.0},{\"correctQuantity\":0,\"dictLabel\":\"多选题\",\"dictValue\":2,\"general\":40,\"score\":0.0,\"totalScore\":20.0},{\"correctQuantity\":0,\"dictLabel\":\"判断题\",\"dictValue\":3,\"general\":60,\"score\":0.0,\"totalScore\":30.0}]","orderNum":100,"deptId":289,"delFlag":"0","createBy":"郑亚琴（五家渠）","createTime":"2026-04-13 17:34:02","updateBy":"郑亚琴（五家渠）","updateTime":"2026-04-13 17:34:02","remark":null,"nickName":"郑亚琴（五家渠）","deptName":"中德利邦职业技能培训中心","roomTitle":"中级监控-理论题库"},{"id":862077,"userId":142318,"examinationRoomId":3,"title":"模拟卷","totalScore":100.0,"passingGrade":60.0,"score":71.5,"lengthOfTime":5359,"general":200,"correctQuantity":143,"howWrong":57,"scoreDetailList":"[{\"correctQuantity\":76,\"dictLabel\":\"单选题\",\"dictValue\":1,\"general\":100,\"score\":38.0,\"totalScore\":50.0},{\"correctQuantity\":18,\"dictLabel\":\"多选题\",\"dictValue\":2,\"general\":40,\"score\":9.0,\"totalScore\":20.0},{\"correctQuantity\":49,\"dictLabel\":\"判断题\",\"dictValue\":3,\"general\":60,\"score\":24.5,\"totalScore\":30.0}]","orderNum":100,"deptId":289,"delFlag":"0","createBy":"郑亚琴（五家渠）","createTime":"2026-04-13 16:26:19","updateBy":"郑亚琴（五家渠）","updateTime":"2026-04-13 16:26:19","remark":null,"nickName":"郑亚琴（五家渠）","deptName":"中德利邦职业技能培训中心","roomTitle":"中级监控-理论题库"},{"id":861648,"userId":142318,"examinationRoomId":3,"title":"模拟卷","totalScore":100.0,"passingGrade":60.0,"score":71.0,"lengthOfTime":397461,"general":200,"correctQuantity":142,"howWrong":58,"scoreDetailList":"[{\"correctQuantity\":69,\"dictLabel\":\"单选题\",\"dictValue\":1,\"general\":100,\"score\":34.5,\"totalScore\":50.0},{\"correctQuantity\":26,\"dictLabel\":\"多选题\",\"dictValue\":2,\"general\":40,\"score\":13.0,\"totalScore\":20.0},{\"correctQuantity\":47,\"dictLabel\":\"判断题\",\"dictValue\":3,\"general\":60,\"score\":23.5,\"totalScore\":30.0}]","orderNum":100,"deptId":289,"delFlag":"0","createBy":"郑亚琴（五家渠）","createTime":"2026-04-13 13:46:21","updateBy":"郑亚琴（五家渠）","updateTime":"2026-04-13 13:46:21","remark":null,"nickName":"郑亚琴（五家渠）","deptName":"中德利邦职业技能培训中心","roomTitle":"中级监控-理论题库"}],"total":5,"size":20,"current":1,"orders":[],"optimizeCountSql":true,"hitCount":false,"countId":null,"maxLimit":null,"searchCount":true,"pages":1}}
+
+
+  8 停用用户
+  curl 'https://os.zhida-keji.com.cn/api/simple/user/stopUser' \
+    -H 'Accept: application/json, text/plain, */*' \
+    -H 'Accept-Language: zh-CN,zh;q=0.9' \
+    -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiI4MWEzYjcxYmY5NTk0NTVlOGQ1Yzc1MGM4NDJkN2UzNiJ9.59gI_GIABxZESrNz9bIhdKIgGLtfXC6sJVPydo-XAHo' \
+    -H 'Connection: keep-alive' \
+    -H 'Content-Type: application/json' \
+    -H 'Origin: https://os.zhida-keji.com.cn' \
+    -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+    -H 'Sec-Fetch-Dest: empty' \
+    -H 'Sec-Fetch-Mode: cors' \
+    -H 'Sec-Fetch-Site: same-origin' \
+    -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \
+    -H 'sec-ch-ua: "Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+    -H 'sec-ch-ua-mobile: ?0' \
+    -H 'sec-ch-ua-platform: "Windows"' \
+    --data-raw '{"userId":144158}'
+
+    {"msg":"操作成功","code":200,"data":"操作成功"}
+
+    9 启用用户
+    curl 'https://os.zhida-keji.com.cn/api/simple/user/startUser' \
+      -H 'Accept: application/json, text/plain, */*' \
+      -H 'Accept-Language: zh-CN,zh;q=0.9' \
+      -H 'Authorization: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbl90b2tlbjoiOiI4MWEzYjcxYmY5NTk0NTVlOGQ1Yzc1MGM4NDJkN2UzNiJ9.59gI_GIABxZESrNz9bIhdKIgGLtfXC6sJVPydo-XAHo' \
+      -H 'Connection: keep-alive' \
+      -H 'Content-Type: application/json' \
+      -H 'Origin: https://os.zhida-keji.com.cn' \
+      -H 'Referer: https://os.zhida-keji.com.cn/pt_users/account' \
+      -H 'Sec-Fetch-Dest: empty' \
+      -H 'Sec-Fetch-Mode: cors' \
+      -H 'Sec-Fetch-Site: same-origin' \
+      -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \
+      -H 'sec-ch-ua: "Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+      -H 'sec-ch-ua-mobile: ?0' \
+      -H 'sec-ch-ua-platform: "Windows"' \
+      --data-raw '{"userId":144158}'
+      {"msg":"操作成功","code":200,"data":"操作成功"}

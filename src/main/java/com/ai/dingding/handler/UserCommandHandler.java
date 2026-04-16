@@ -7,6 +7,7 @@ import com.ai.dingding.nlu.ParseResult;
 import com.ai.dingding.service.DingTalkMessageService;
 import com.ai.dingding.service.RegistrationService;
 import com.ai.dingding.service.SystemApiService;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.log4j.Log4j2;
 import shade.com.alibaba.fastjson2.JSON;
 import shade.com.alibaba.fastjson2.JSONObject;
@@ -39,6 +40,8 @@ public class UserCommandHandler {
     private static final String CMD_CREATE = "创建用户";
     private static final String CMD_SEARCH = "搜索用户";
     private static final String CMD_DELETE = "删除用户";
+    private static final String CMD_STOP = "停用用户";
+    private static final String CMD_START = "启用用户";
     private static final String CMD_EXPORT_EXAM = "导出考试记录";
     private static final String CMD_STUDENT_STATS = "统计新增学员";
 
@@ -78,6 +81,12 @@ public class UserCommandHandler {
                               DingTalkMessageService dingTalkMessageService,
                               RegistrationService registrationService) {
         this(systemApiService, dingTalkMessageService, registrationService, null, null);
+    }
+
+    /** 测试便利构造函数（无 RegistrationService / NLU） */
+    public UserCommandHandler(SystemApiService systemApiService,
+                              DingTalkMessageService dingTalkMessageService) {
+        this(systemApiService, dingTalkMessageService, null, null, null);
     }
 
     public UserCommandHandler(SystemApiService systemApiService,
@@ -159,8 +168,7 @@ public class UserCommandHandler {
                             "自然语言解析服务暂时不可用，请使用标准指令格式\n" + buildHelpText());
                 }
             } else {
-                reply(conversationType, conversationId, senderId,
-                        "NLU 功能未启用，请使用标准指令格式\n" + buildHelpText());
+                routeByKeyword(text, conversationType, conversationId, senderId);
             }
         } catch (Exception e) {
             log.error("处理机器人消息异常，消息：{}", robotMessage, e);
@@ -219,7 +227,7 @@ public class UserCommandHandler {
             sb.append(ok ? "[成功] " : "[失败] ")
                     .append(u[0]).append("（").append(u[1]).append("）");
             if (!ok) {
-                sb.append(" - ").append(extractCreateError(result));
+                sb.append(" - ").append(extractApiError(result));
             }
             sb.append("\n");
         }
@@ -321,6 +329,87 @@ public class UserCommandHandler {
         String result = systemApiService.deleteUser(userId);
         reply(conversationType, conversationId, senderId,
                 buildDeleteReply(actualName, userId, result));
+    }
+
+    /**
+     * 批量停用用户，支持逗号分隔多个姓名。
+     * 先按姓名搜索拿到 userId，再调用停用接口。
+     */
+    public void handleStopUsers(List<String> names,
+                                 String conversationType, String conversationId, String senderId) {
+        handleToggleUsers(names, false, conversationType, conversationId, senderId);
+    }
+
+    /**
+     * 批量启用用户，支持逗号分隔多个姓名。
+     */
+    public void handleStartUsers(List<String> names,
+                                  String conversationType, String conversationId, String senderId) {
+        handleToggleUsers(names, true, conversationType, conversationId, senderId);
+    }
+
+    private void handleToggleUsers(List<String> names, boolean enable,
+                                    String conversationType, String conversationId, String senderId) {
+        String action = enable ? "启用" : "停用";
+        if (names == null || names.isEmpty()) {
+            reply(conversationType, conversationId, senderId,
+                    "用户名不能为空，格式：" + action + "用户 姓名1,姓名2");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("批量").append(action).append("结果（共 ").append(names.size()).append(" 人）：\n");
+        int successCount = 0;
+
+        for (String name : names) {
+            if (name == null || name.isBlank()) continue;
+            List<JSONObject> users = systemApiService.searchUser(name);
+            if (users.isEmpty()) {
+                sb.append("[失败] ").append(name).append(" - 未找到该用户\n");
+                continue;
+            }
+            if (users.size() > 1) {
+                sb.append("[失败] ").append(name).append(" - 找到 ").append(users.size())
+                        .append(" 个同名用户，请提供更精确的姓名\n");
+                continue;
+            }
+            JSONObject user = users.get(0);
+            Long userId = user.getLong("userId");
+            String actualName = user.getString("nickName");
+            if (userId == null) {
+                sb.append("[失败] ").append(name).append(" - 获取用户 ID 失败\n");
+                continue;
+            }
+            String result = enable
+                    ? systemApiService.startUser(userId)
+                    : systemApiService.stopUser(userId);
+            boolean ok = isApiSuccess(result);
+            if (ok) successCount++;
+            sb.append(ok ? "[成功] " : "[失败] ").append(actualName);
+            if (!ok) {
+                sb.append(" - ").append(extractApiError(result));
+            }
+            sb.append("\n");
+        }
+        sb.append("---\n共成功 ").append(successCount).append(" / ").append(names.size()).append(" 人");
+        reply(conversationType, conversationId, senderId, sb.toString());
+    }
+
+    /**
+     * 解析逗号分隔的姓名列表（停用/启用指令用）。
+     */
+    public List<String> parseBatchNames(String text, String cmd) {
+        String args = text.substring(cmd.length()).trim();
+        if (args.startsWith("@")) {
+            int spaceIdx = args.indexOf(' ');
+            args = spaceIdx > 0 ? args.substring(spaceIdx).trim() : "";
+        }
+        List<String> names = new java.util.ArrayList<>();
+        for (String part : args.split("[,，\n\r]+")) {
+            String name = part.trim();
+            if (!name.isBlank()) names.add(name);
+        }
+        return names;
     }
 
     /**
@@ -434,9 +523,12 @@ public class UserCommandHandler {
 
     /** 判断创建用户 API 响应是否成功 */
     private boolean isCreateSuccess(String rawResult) {
-        if (rawResult == null) {
-            return false;
-        }
+        return isApiSuccess(rawResult);
+    }
+
+    /** 判断任意 API 响应是否成功（code == 200） */
+    private boolean isApiSuccess(String rawResult) {
+        if (rawResult == null) return false;
         try {
             JSONObject resp = JSON.parseObject(rawResult);
             return resp != null && resp.getInteger("code") == 200;
@@ -445,11 +537,9 @@ public class UserCommandHandler {
         }
     }
 
-    /** 从创建用户失败响应中提取错误描述 */
-    private String extractCreateError(String rawResult) {
-        if (rawResult == null) {
-            return "服务异常";
-        }
+    /** 从失败响应中提取错误描述 */
+    private String extractApiError(String rawResult) {
+        if (rawResult == null) return "服务异常";
         try {
             JSONObject resp = JSON.parseObject(rawResult);
             String msg = resp != null ? resp.getString("msg") : null;
@@ -618,22 +708,31 @@ public class UserCommandHandler {
         return "📖 功能说明 & 指令格式\n"
                 + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 + "💡 支持自然语言，直接描述你想做的事即可，例如：\n"
-                + "   「帮我创建用户 张三 13800138000」\n"
+                + "   「帮我创建用户 张三 五家渠 13800138000」\n"
                 + "   「查一下李四这个人」\n"
                 + "   「导出上周的考试记录」\n"
+                + "   「停用 张三,李四」\n"
                 + "\n"
                 + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 + "👤 创建用户\n"
                 + "  单个：创建用户 <姓名> <手机号>\n"
                 + "  示例：创建用户 张三 13800138000\n"
+                + "  带地区：创建用户 张三 五家渠 13800138000  →  用户名自动合并为「张三（五家渠）」\n"
                 + "  批量：创建用户 <姓名1> <手机号1>,<姓名2> <手机号2>\n"
                 + "  示例：创建用户 张三 13800138000,李四 13900139000\n"
+                + "\n"
+                + "🔴 停用用户\n"
+                + "  格式：停用用户 <姓名1>,<姓名2>\n"
+                + "  示例：停用用户 张三,李四\n"
+                + "\n"
+                + "🟢 启用用户\n"
+                + "  格式：启用用户 <姓名1>,<姓名2>\n"
+                + "  示例：启用用户 张三,李四\n"
                 + "\n"
                 + "📝 报名成功\n"
                 + "  单个：报名成功 <姓名> <手机号>\n"
                 + "  示例：报名成功 张三 13800138000\n"
                 + "  批量：报名成功 <姓名1> <手机号1>,<姓名2> <手机号2>\n"
-                + "  示例：报名成功 张三 13800138000,李四 13900139000\n"
                 + "\n"
                 + "🔍 搜索用户\n"
                 + "  格式：搜索用户 <姓名>\n"
@@ -651,13 +750,9 @@ public class UserCommandHandler {
                 + "    导出考试记录 2026-04-01 2026-04-11\n"
                 + "  按区域导出：\n"
                 + "    导出考试记录 近一周 <区域名>\n"
-                + "    导出考试记录 近一个月 <区域名>\n"
-                + "    导出考试记录 2026-04-01 2026-04-11 <区域名>\n"
                 + "  按学生导出：\n"
                 + "    导出考试记录 学生 <学生姓名>\n"
                 + "    导出考试记录 学生 <学生姓名> 近一周\n"
-                + "    导出考试记录 学生 <学生姓名> 近一个月\n"
-                + "    导出考试记录 学生 <学生姓名> 2026-04-01 2026-04-11\n"
                 + "\n"
                 + "━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 + "❓ 发送「帮助」或「help」可随时查看本说明";
@@ -716,13 +811,10 @@ public class UserCommandHandler {
     }
 
     /**
-     * 解析创建用户指令，返回 [nickName, phone]。
-     * 指令格式：创建用户 <用户名> <手机号>
-     */
-    /**
      * 解析批量创建用户参数，支持逗号分隔多个用户。
      * 格式：张三 13800138000,李四 13900139000
-     * 每条格式：<用户名> <手机号>（空格分隔）
+     * 智能地区合并：张三 五家渠 13800138000 → nickName="张三（五家渠）", phone="13800138000"
+     * 判断依据：第二个 token 不是纯数字则视为地区名，自动拼入括号
      *
      * @return 每个元素为 [nickName, phone] 的列表
      */
@@ -738,15 +830,33 @@ public class UserCommandHandler {
         String[] entries = args.split("[,，\n\r]+");
         for (String entry : entries) {
             entry = entry.trim();
-            if (entry.isBlank()) {
-                continue;
+            if (entry.isBlank()) continue;
+            String[] parts = entry.split("\\s+");
+            if (parts.length == 0) continue;
+
+            String nickName;
+            String phone;
+
+            if (parts.length >= 3 && !isPhoneNumber(parts[1])) {
+                // 格式：姓名 地区 手机号 → 合并为「姓名（地区）」
+                nickName = parts[0].trim() + "（" + parts[1].trim() + "）";
+                phone = parts[2].trim();
+            } else if (parts.length >= 2) {
+                // 格式：姓名 手机号
+                nickName = parts[0].trim();
+                phone = parts[1].trim();
+            } else {
+                nickName = parts[0].trim();
+                phone = "";
             }
-            String[] parts = entry.split("\\s+", 2);
-            String nickName = parts[0].trim();
-            String phone = parts.length > 1 ? parts[1].trim() : "";
             result.add(new String[]{nickName, phone});
         }
         return result;
+    }
+
+    /** 判断字符串是否为手机号（纯数字，长度 7-15） */
+    private boolean isPhoneNumber(String s) {
+        return s != null && s.matches("\\d{7,15}");
     }
 
     /**
@@ -1029,5 +1139,12 @@ public class UserCommandHandler {
 
     private String nullToEmpty(String val) {
         return val == null ? "" : val;
+    }
+
+    /** 应用关闭时优雅关闭后台线程池，避免线程泄漏 */
+    @PreDestroy
+    public void shutdown() {
+        asyncExecutor.shutdown();
+        log.info("asyncExecutor 已关闭");
     }
 }

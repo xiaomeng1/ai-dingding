@@ -16,7 +16,8 @@ public class CommandRouter {
 
     /** 合法意图集合 */
     public static final Set<String> VALID_INTENTS = Set.of(
-            "CREATE_USER", "SEARCH_USER", "EXPORT_EXAM", "STUDENT_STATS", "REGISTER_SUCCESS", "HELP"
+            "CREATE_USER", "SEARCH_USER", "STOP_USER", "START_USER",
+            "EXPORT_EXAM", "STUDENT_STATS", "REGISTER_SUCCESS", "HELP"
     );
 
     private final UserCommandHandler handler;
@@ -50,6 +51,16 @@ public class CommandRouter {
             case "SEARCH_USER": {
                 String nickName = params != null ? (String) params.get("nickName") : null;
                 handler.handleSearch(nickName, conversationType, conversationId, senderId);
+                break;
+            }
+            case "STOP_USER": {
+                List<String> names = toNameList(params != null ? params.get("names") : null);
+                handler.handleStopUsers(names, conversationType, conversationId, senderId);
+                break;
+            }
+            case "START_USER": {
+                List<String> names = toNameList(params != null ? params.get("names") : null);
+                handler.handleStartUsers(names, conversationType, conversationId, senderId);
                 break;
             }
             case "EXPORT_EXAM": {
@@ -109,5 +120,28 @@ public class CommandRouter {
             return sb.toString();
         }
         return usersVal.toString();
+    }
+
+    /**
+     * 将 params.names 转为姓名列表，兼容字符串（逗号分隔）和数组两种格式。
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> toNameList(Object namesVal) {
+        if (namesVal == null) return List.of();
+        List<String> result = new java.util.ArrayList<>();
+        if (namesVal instanceof List) {
+            for (Object o : (List<Object>) namesVal) {
+                if (o != null) {
+                    String s = o.toString().trim();
+                    if (!s.isBlank()) result.add(s);
+                }
+            }
+        } else {
+            for (String part : namesVal.toString().split("[,，]+")) {
+                String s = part.trim();
+                if (!s.isBlank()) result.add(s);
+            }
+        }
+        return result;
     }
 }

@@ -19,24 +19,33 @@ public class NluService {
 
             1. CREATE_USER（创建用户）
                - params.users：要创建的用户列表，格式为"姓名 手机号"，多个用户用英文逗号分隔，例如：张三 13800138000,李四 13900139000
+               - 智能地区合并：用户可能在姓名后跟地区名再跟手机号，例如"张三 五家渠 13800138000"，此时应输出为"张三 五家渠 13800138000"（保留原始格式，由后端合并为「张三（五家渠）」）
+               - 示例输入："帮我创建用户 董建玲 五家渠 13800138000" → params.users = "董建玲 五家渠 13800138000"
 
             2. SEARCH_USER（查询用户）
                - params.nickName：要查询的用户昵称或姓名
 
-            3. EXPORT_EXAM（导出考试数据）
+            3. STOP_USER（停用用户）
+               - params.names：要停用的用户姓名列表，多个用英文逗号分隔，例如：张三,李四
+               - 用户可能说"停用"、"禁用"、"封号"等
+
+            4. START_USER（启用用户）
+               - params.names：要启用的用户姓名列表，多个用英文逗号分隔，例如：张三,李四
+               - 用户可能说"启用"、"解封"、"恢复"等
+
+            5. EXPORT_EXAM（导出考试数据）
                - params.timeRange（必填）：时间范围，可以是"近一周"、"近一个月"，或自定义日期范围（格式：yyyy-MM-dd yyyy-MM-dd，起止日期用空格分隔）
                - params.region（可选）：地区筛选
                - params.studentName（可选）：学生姓名筛选，指定学生姓名时按学生导出
-               - 按学生导出时，params.timeRange 仍可携带时间范围，格式同上
                - 注意：region 和 studentName 互斥，同一指令中不应同时出现
 
-            4. STUDENT_STATS（学生统计）
+            6. STUDENT_STATS（学生统计）
                - params.timeRange（必填）：时间范围，可以是"近一周"、"近一个月"，或自定义日期范围（格式：yyyy-MM-dd yyyy-MM-dd）
 
-            5. REGISTER_SUCCESS（报名成功）
+            7. REGISTER_SUCCESS（报名成功）
                - params.users：要报名的用户列表，格式为"姓名 手机号"，多个用户用英文逗号分隔，例如：张三 13800138000,李四 13900139000
 
-            6. HELP（帮助）
+            8. HELP（帮助）
                - 无需参数，用户询问使用方法、帮助、怎么用、支持什么功能，或发送"帮助"、"help"、"？"、"?"时使用
 
             输出格式要求：
@@ -91,6 +100,11 @@ public class NluService {
 
             String cleanedJson = stripMarkdownCodeBlock(rawContent);
             JSONObject obj = JSON.parseObject(cleanedJson);
+
+            if (obj == null) {
+                log.warn("NLU 返回内容无法解析为 JSON，原始内容: {}", rawContent);
+                return ParseResult.ofUnrecognized("无法解析指令，请重新输入");
+            }
 
             if (obj.getBooleanValue("unrecognized")) {
                 String hint = obj.getString("hint");

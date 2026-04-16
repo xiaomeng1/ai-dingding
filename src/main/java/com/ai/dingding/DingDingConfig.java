@@ -31,7 +31,6 @@ public class DingDingConfig {
     @Bean
     public DingTalkMessageService dingTalkMessageService() {
         String appKey = System.getProperty("ding.appKey");
-        String appSecret = System.getProperty("ding.appSecret");
         return new DingTalkMessageService(appKey);
     }
 

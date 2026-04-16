@@ -116,7 +116,11 @@ public class RegistrationService {
      * @return 未审批用户列表
      */
     public synchronized List<JSONObject> findUnapproved(ApprovalField field, String name) throws SQLException {
+        // approvedCol 来自枚举，仅允许已知列名，防止意外拼接
         String approvedCol = field.getColumn();
+        if (!approvedCol.equals("ding_approved") && !approvedCol.equals("meeting_approved")) {
+            throw new IllegalArgumentException("非法的审批字段: " + approvedCol);
+        }
         String sql = name != null && !name.isBlank()
                 ? "SELECT id, name, phone, ding_approved, meeting_approved FROM registrations WHERE " + approvedCol + " = 0 AND name LIKE ?"
                 : "SELECT id, name, phone, ding_approved, meeting_approved FROM registrations WHERE " + approvedCol + " = 0";

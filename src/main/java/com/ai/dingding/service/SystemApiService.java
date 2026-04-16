@@ -30,14 +30,14 @@ public class SystemApiService {
     /** 从 JVM 启动参数读取：-Dsys.password=xxx */
     private static final String LOGIN_PASSWORD = System.getProperty("sys.password");
 
-    /** 创建用户时使用的固定默认参数 */
+    /** 创建用户时使用的固定默认参数（可通过 JVM 参数覆盖） */
     private static final String ACCOUNT_TYPE = "[\"1\"]";
-    private static final String PROVINCE = "新疆省";
-    private static final String STATION = "乌鲁木齐站";
-    private static final String DEFAULT_PASSWORD = "123456";
-    private static final String LEVEL = "中级监控";
-    private static final int DURATION = 31;
-    private static final List<String> PROVINCE_LIST = List.of("新疆省", "乌鲁木齐站");
+    private static final String PROVINCE = System.getProperty("sys.province", "新疆省");
+    private static final String STATION = System.getProperty("sys.station", "乌鲁木齐站");
+    private static final String DEFAULT_PASSWORD = System.getProperty("sys.defaultPassword", "123456");
+    private static final String LEVEL = System.getProperty("sys.level", "中级监控");
+    private static final int DURATION = Integer.parseInt(System.getProperty("sys.duration", "31"));
+    private static final List<String> PROVINCE_LIST = List.of(PROVINCE, STATION);
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -151,6 +151,38 @@ public class SystemApiService {
         String requestBody = "[" + userId + "]";
         return executeWithTokenRetry(
                 () -> delete(BASE_URL + "/simple/user", requestBody,
+                        AuthTokenHolder.getSystemToken())
+        );
+    }
+
+    // -------- 停用 / 启用用户 --------
+
+    /**
+     * 停用用户（accountStatus → 停用）。
+     *
+     * @param userId 用户 ID
+     * @return 操作结果原始 JSON
+     */
+    public String stopUser(long userId) {
+        JSONObject body = new JSONObject();
+        body.put("userId", userId);
+        return executeWithTokenRetry(
+                () -> post(BASE_URL + "/simple/user/stopUser", body.toJSONString(),
+                        AuthTokenHolder.getSystemToken())
+        );
+    }
+
+    /**
+     * 启用用户（accountStatus → 正常）。
+     *
+     * @param userId 用户 ID
+     * @return 操作结果原始 JSON
+     */
+    public String startUser(long userId) {
+        JSONObject body = new JSONObject();
+        body.put("userId", userId);
+        return executeWithTokenRetry(
+                () -> post(BASE_URL + "/simple/user/startUser", body.toJSONString(),
                         AuthTokenHolder.getSystemToken())
         );
     }
