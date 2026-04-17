@@ -187,12 +187,12 @@ public class RegistrationService {
      * @return 姓名列表
      */
     public synchronized List<String> findPendingAny() throws SQLException {
-        String sql = "SELECT name FROM registrations WHERE ding_approved = 0 OR meeting_approved = 0 ORDER BY name";
+        String sql = "SELECT phone FROM registrations WHERE ding_approved = 0 OR meeting_approved = 0 ORDER BY name";
         List<String> names = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                names.add(rs.getString("name"));
+                names.add(rs.getString("phone"));
             }
         }
         return names;
