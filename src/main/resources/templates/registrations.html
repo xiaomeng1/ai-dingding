@@ -63,7 +63,9 @@
                     <th>姓名</th>
                     <th>手机号</th>
                     <th>钉钉群审批</th>
+                    <th>钉钉审批次数</th>
                     <th>会议录播审批</th>
+                    <th>会议审批次数</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -120,7 +122,7 @@ function loadData() {
     const field = document.getElementById('fieldSelect').value;
     const name = document.getElementById('nameInput').value.trim();
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">加载中...</td></tr>';
 
     let url;
     if (field === 'all') {
@@ -136,7 +138,7 @@ function loadData() {
         .then(r => {
             clearTimeout(timeoutId);
             if (!r.ok) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">请求失败 HTTP ' + r.status + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#cf1322; padding:30px;">请求失败 HTTP ' + r.status + '</td></tr>';
                 return null;
             }
             return r.json();
@@ -145,12 +147,12 @@ function loadData() {
             if (!data) return;
             if (data.code !== 200) {
                 showMsg('接口错误: ' + (data.error || '未知错误'), false);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">接口错误: ' + esc(data.error || '') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#cf1322; padding:30px;">接口错误: ' + esc(data.error || '') + '</td></tr>';
                 return;
             }
             const list = data.data || [];
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:30px;">暂无数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999; padding:30px;">暂无数据</td></tr>';
                 return;
             }
             tbody.innerHTML = list.map((r, i) => {
@@ -163,7 +165,9 @@ function loadData() {
                     '<td>' + esc(r.name) + '</td>' +
                     '<td>' + esc(r.phone) + '</td>' +
                     '<td><span class="badge ' + dingCls + '">' + dingTxt + '</span></td>' +
+                    '<td style="text-align:center">' + (r.dingApprovalCount ?? 0) + '</td>' +
                     '<td><span class="badge ' + meetCls + '">' + meetTxt + '</span></td>' +
+                    '<td style="text-align:center">' + (r.meetingApprovalCount ?? 0) + '</td>' +
                     '<td class="actions">' +
                     '<button class="ding" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, true, false)">钉钉</button>' +
                     '<button class="meeting" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, false, true)">会议</button>' +
@@ -174,7 +178,7 @@ function loadData() {
             clearTimeout(timeoutId);
             const msg = e.name === 'AbortError' ? '请求超时（10秒）' : '加载失败：' + e.message;
             showMsg(msg, false);
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#cf1322; padding:30px;">' + msg + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#cf1322; padding:30px;">' + msg + '</td></tr>';
         });
 }
 

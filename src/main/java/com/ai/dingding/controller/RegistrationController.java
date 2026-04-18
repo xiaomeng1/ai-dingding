@@ -2,6 +2,7 @@ package com.ai.dingding.controller;
 
 import com.ai.dingding.service.RegistrationService;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,8 +26,13 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
 
-    public RegistrationController(RegistrationService registrationService) {
+    public RegistrationController(
+            RegistrationService registrationService,
+            @Value("${registration.maxDingApprovalCount:3}") int maxDingApprovalCount,
+            @Value("${registration.maxMeetingApprovalCount:3}") int maxMeetingApprovalCount) {
         this.registrationService = registrationService;
+        this.registrationService.setMaxDingApprovalCount(maxDingApprovalCount);
+        this.registrationService.setMaxMeetingApprovalCount(maxMeetingApprovalCount);
     }
 
     /** 报名管理页面 */

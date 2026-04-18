@@ -49,6 +49,11 @@ public class RegistrationService {
     }
 
     private final Connection conn;
+    private int maxDingApprovalCount = 3;
+    private int maxMeetingApprovalCount = 3;
+
+    public void setMaxDingApprovalCount(int max) { this.maxDingApprovalCount = max; }
+    public void setMaxMeetingApprovalCount(int max) { this.maxMeetingApprovalCount = max; }
 
     public RegistrationService() {
         try {
@@ -77,6 +82,8 @@ public class RegistrationService {
                         phone TEXT NOT NULL,
                         ding_approved INTEGER DEFAULT 0,
                         meeting_approved INTEGER DEFAULT 0,
+                        ding_approval_count INTEGER DEFAULT 0,
+                        meeting_approval_count INTEGER DEFAULT 0,
                         created_at TEXT,
                         updated_at TEXT
                     )
@@ -84,6 +91,8 @@ public class RegistrationService {
             // 兼容旧表：若列不存在则添加
             try { stmt.execute("ALTER TABLE registrations ADD COLUMN created_at TEXT"); } catch (SQLException ignored) {}
             try { stmt.execute("ALTER TABLE registrations ADD COLUMN updated_at TEXT"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE registrations ADD COLUMN ding_approval_count INTEGER DEFAULT 0"); } catch (SQLException ignored) {}
+            try { stmt.execute("ALTER TABLE registrations ADD COLUMN meeting_approval_count INTEGER DEFAULT 0"); } catch (SQLException ignored) {}
         }
         log.info("SQLite 数据库初始化完成");
     }
@@ -124,19 +133,20 @@ public class RegistrationService {
      * @return 未审批用户列表
      */
     public synchronized List<JSONObject> findUnapproved(ApprovalField field, String name) throws SQLException {
-        // approvedCol 来自枚举，仅允许已知列名，防止意外拼接
         String approvedCol = field.getColumn();
         if (!approvedCol.equals("ding_approved") && !approvedCol.equals("meeting_approved")) {
             throw new IllegalArgumentException("非法的审批字段: " + approvedCol);
         }
-        String sql = name != null && !name.isBlank()
-                ? "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations WHERE " + approvedCol + " = 0 AND name LIKE ?"
-                : "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations WHERE " + approvedCol + " = 0";
+        String base = "SELECT id, name, phone, ding_approved, meeting_approved, ding_approval_count, meeting_approval_count, created_at, updated_at FROM registrations WHERE "
+                + approvedCol + " = 0 AND ding_approval_count <= ? AND meeting_approval_count <= ?";
+        String sql = name != null && !name.isBlank() ? base + " AND name LIKE ?" : base;
 
         List<JSONObject> results = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maxDingApprovalCount);
+            ps.setInt(2, maxMeetingApprovalCount);
             if (name != null && !name.isBlank()) {
-                ps.setString(1, "%" + name.trim() + "%");
+                ps.setString(3, "%" + name.trim() + "%");
             }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -146,6 +156,8 @@ public class RegistrationService {
                     row.put("phone", rs.getString("phone"));
                     row.put("dingApproved", rs.getInt("ding_approved") == 1);
                     row.put("meetingApproved", rs.getInt("meeting_approved") == 1);
+                    row.put("dingApprovalCount", rs.getInt("ding_approval_count"));
+                    row.put("meetingApprovalCount", rs.getInt("meeting_approval_count"));
                     row.put("createdAt", rs.getString("created_at"));
                     row.put("updatedAt", rs.getString("updated_at"));
                     results.add(row);
@@ -165,12 +177,18 @@ public class RegistrationService {
      */
     public synchronized int updateApprovalByName(String name, Boolean dingApproved, Boolean meetingApproved) throws SQLException {
         List<String> sets = new ArrayList<>();
-        if (dingApproved != null) sets.add("ding_approved = ?");
-        if (meetingApproved != null) sets.add("meeting_approved = ?");
+        if (dingApproved != null) {
+            sets.add("ding_approved = ?");
+            sets.add("ding_approval_count = ding_approval_count + 1");
+        }
+        if (meetingApproved != null) {
+            sets.add("meeting_approved = ?");
+            sets.add("meeting_approval_count = meeting_approval_count + 1");
+        }
         if (sets.isEmpty()) return 0;
 
         sets.add("updated_at = ?");
-        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE name = ?";
+        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE phone = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             int idx = 1;
             if (dingApproved != null) ps.setBoolean(idx++, dingApproved);
@@ -187,12 +205,15 @@ public class RegistrationService {
      * @return 姓名列表
      */
     public synchronized List<String> findPendingAny() throws SQLException {
-        String sql = "SELECT phone FROM registrations WHERE ding_approved = 0 OR meeting_approved = 0 ORDER BY name";
+        String sql = "SELECT phone FROM registrations WHERE (ding_approved = 0 OR meeting_approved = 0) AND ding_approval_count <= ? AND meeting_approval_count <= ? ORDER BY name";
         List<String> names = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                names.add(rs.getString("phone"));
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maxDingApprovalCount);
+            ps.setInt(2, maxMeetingApprovalCount);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    names.add(rs.getString("phone"));
+                }
             }
         }
         return names;
@@ -202,7 +223,7 @@ public class RegistrationService {
      * 查询全部报名记录。
      */
     public synchronized List<JSONObject> findAll() throws SQLException {
-        String sql = "SELECT id, name, phone, ding_approved, meeting_approved, created_at, updated_at FROM registrations ORDER BY id DESC";
+        String sql = "SELECT id, name, phone, ding_approved, meeting_approved, ding_approval_count, meeting_approval_count, created_at, updated_at FROM registrations ORDER BY id DESC";
         List<JSONObject> results = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -213,6 +234,8 @@ public class RegistrationService {
                 row.put("phone", rs.getString("phone"));
                 row.put("dingApproved", rs.getInt("ding_approved") == 1);
                 row.put("meetingApproved", rs.getInt("meeting_approved") == 1);
+                row.put("dingApprovalCount", rs.getInt("ding_approval_count"));
+                row.put("meetingApprovalCount", rs.getInt("meeting_approval_count"));
                 row.put("createdAt", rs.getString("created_at"));
                 row.put("updatedAt", rs.getString("updated_at"));
                 results.add(row);
