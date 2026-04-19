@@ -83,7 +83,7 @@ public class CommandRouter {
             }
             case "REGISTER_SUCCESS": {
                 String users = params != null ? toUsersString(params.get("users")) : null;
-                List<String[]> userList = handler.parseBatchCreateArgs("报名 " + users);
+                List<String[]> userList = handler.parseBatchCreateArgs("报名成功 " + users);
                 handler.handleRegisterSuccess(userList, conversationType, conversationId, senderId);
                 break;
             }
