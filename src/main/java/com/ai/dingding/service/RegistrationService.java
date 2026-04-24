@@ -197,7 +197,8 @@ public class RegistrationService {
         params.add(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         params.add(name.trim());
 
-        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE name = ?";
+        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE phone = ?";
+        log.info("updateApprovalByName SQL: {} | params: {}", sql, params);
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.size(); i++) {
                 Object p = params.get(i);
@@ -214,11 +215,9 @@ public class RegistrationService {
      * @return 姓名列表
      */
     public synchronized List<String> findPendingAny() throws SQLException {
-        String sql = "SELECT phone FROM registrations WHERE (ding_approved = 0 OR meeting_approved = 0) AND ding_approval_count <= ? AND meeting_approval_count <= ? ORDER BY name";
+        String sql = "SELECT phone FROM registrations WHERE (ding_approved = 0 OR meeting_approved = 0) ORDER BY name";
         List<String> names = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, maxDingApprovalCount);
-            ps.setInt(2, maxMeetingApprovalCount);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     names.add(rs.getString("phone"));
