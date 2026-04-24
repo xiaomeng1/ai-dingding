@@ -176,25 +176,34 @@ public class RegistrationService {
      * @return 实际更新的行数
      */
     public synchronized int updateApprovalByName(String name, Boolean dingApproved, Boolean meetingApproved) throws SQLException {
+        if (dingApproved == null && meetingApproved == null) return 0;
+
         List<String> sets = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+
         if (dingApproved != null) {
-            sets.add("ding_approved = ?");
+            // 只有计数达到最大值时才标记为已审批
+            sets.add("ding_approved = CASE WHEN ding_approval_count + 1 >= ? THEN 1 ELSE ding_approved END");
+            params.add(maxDingApprovalCount);
             sets.add("ding_approval_count = ding_approval_count + 1");
         }
         if (meetingApproved != null) {
-            sets.add("meeting_approved = ?");
+            sets.add("meeting_approved = CASE WHEN meeting_approval_count + 1 >= ? THEN 1 ELSE meeting_approved END");
+            params.add(maxMeetingApprovalCount);
             sets.add("meeting_approval_count = meeting_approval_count + 1");
         }
-        if (sets.isEmpty()) return 0;
 
         sets.add("updated_at = ?");
-        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE phone = ?";
+        params.add(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        params.add(name.trim());
+
+        String sql = "UPDATE registrations SET " + String.join(", ", sets) + " WHERE name = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = 1;
-            if (dingApproved != null) ps.setBoolean(idx++, dingApproved);
-            if (meetingApproved != null) ps.setBoolean(idx++, meetingApproved);
-            ps.setString(idx++, java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            ps.setString(idx, name.trim());
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) ps.setInt(i + 1, (Integer) p);
+                else ps.setString(i + 1, (String) p);
+            }
             return ps.executeUpdate();
         }
     }

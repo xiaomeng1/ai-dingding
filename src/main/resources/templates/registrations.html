@@ -66,6 +66,8 @@
                     <th>钉钉审批次数</th>
                     <th>会议录播审批</th>
                     <th>会议审批次数</th>
+                    <th>创建时间</th>
+                    <th>更新时间</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -168,6 +170,8 @@ function loadData() {
                     '<td style="text-align:center">' + (r.dingApprovalCount ?? 0) + '</td>' +
                     '<td><span class="badge ' + meetCls + '">' + meetTxt + '</span></td>' +
                     '<td style="text-align:center">' + (r.meetingApprovalCount ?? 0) + '</td>' +
+                    '<td>' + esc(r.createdAt || '') + '</td>' +
+                    '<td>' + esc(r.updatedAt || '') + '</td>' +
                     '<td class="actions">' +
                     '<button class="ding" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, true, false)">钉钉</button>' +
                     '<button class="meeting" onclick="showUpdateDialog(&quot;' + esc(r.name) + '&quot;, false, true)">会议</button>' +
